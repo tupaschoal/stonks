@@ -91,6 +91,15 @@ form label {
 </html>
 
 <script>
+class Movimentacao {
+    construtor(numacoes, preco) {
+        this.numacoes = numacoes;
+        this.preco = preco;
+    }
+}
+
+var movimentacoes = []
+
 function Registrar() {
 
     var acao = document.getElementById("Acao").value;
@@ -98,5 +107,7 @@ function Registrar() {
     var preco = document.getElementById("Preco").value;
    
     alert('Voce comprou ' + numacoes + " de " + acao + " a " + preco + " reais por ação");
+    
+    movimentacoes.push(new Movimentacao(numacoes, preco));
 }
 </script>
