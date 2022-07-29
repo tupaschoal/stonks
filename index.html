@@ -22,6 +22,7 @@ table, td {
 <thead>
     <tr>
     <td>Ação</td>
+    <td>Data</td>
     <td>Operação</td>
     <td>Número de ações</td>
     <td>Preço</td>
@@ -52,14 +53,15 @@ function asCurrency(value) {
 }
 
 class Movimentacao {
-    constructor(numAcoes, preco, salario) {
+    constructor(numAcoes, preco, salario, data) {
         this.numAcoes = numAcoes;
         this.preco = preco;
         this.salario = salario
+        this.data = data
     }
     
     static default() {
-        return new Movimentacao(0,0,false);
+        return new Movimentacao(0,0,false, new Date(1900, 1, 1));
     }
 
     compra() {
@@ -68,19 +70,20 @@ class Movimentacao {
 }
 
 class Estado {
-    constructor(numAcoes, precoMedio, lucroAcumulado, impostoAcumulado) {
+    constructor(numAcoes, precoMedio, lucroAcumulado, impostoAcumulado, data) {
         this.numAcoes = numAcoes
         this.precoMedio = precoMedio;
         this.lucroAcumulado = lucroAcumulado;
         this.impostoAcumulado = impostoAcumulado
+        this.data = data
     }
     
     static default() {
-        return new Estado(0,0,0,0);
+        return new Estado(0,0,0,0, new Date(1900,1,1));
     }
     
     clone() {
-        return new Estado(this.numAcoes, this.precoMedio, this.lucroAcumulado, this.impostoAcumulado)
+        return new Estado(this.numAcoes, this.precoMedio, this.lucroAcumulado, this.impostoAcumulado, this.data)
     }
     
     valor() {
@@ -115,6 +118,14 @@ function parseCurrency(value) {
     return value.replace(/,/, '.').replace(/[.](?=.*[.])/g, "")
 }
 
+function parseDate(date) {
+    // Expect DD/MM/YYYY
+    var parts = date.split("/")
+    return new Date(parseInt(parts[2]),
+                    parseInt(parts[1]),
+                    parseInt(parts[0]))
+}
+
 function CSVToMovimentacao(text) {
     var movimentacoes = {};
     var lines = text.split(/\r?\n|\r|\n/g);
@@ -127,7 +138,12 @@ function CSVToMovimentacao(text) {
         if (!(items[0] in movimentacoes)) {
             movimentacoes[items[0]] = []
         }
-        movimentacoes[items[0]].push(new Movimentacao(parseInt(items[1]), parseCurrency(items[2]), /*salario=*/true))
+        movimentacoes[items[0]].push(new Movimentacao(
+            parseInt(items[2]),
+            parseCurrency(items[3]),
+            /*salario=*/true,
+            parseDate(items[1]),
+            ))
     }
     return movimentacoes;
 }
@@ -149,18 +165,15 @@ function executarMovimentacoes(states, movimentacoes) {
 
 function updateTable(states) {
     var table = document.getElementById("myTable");
-    /*
-
-    */
-    
+   
     for (const [acao, mov2states] of Object.entries(states)) {
-        var e = Estado.default();
-        for (let i = 0; i < mov2states.length; i++) {
+        for (let i = 0; i < mov2states.length; i++) {          
             var row = table.insertRow(table.nrows);
             var mov = mov2states[i][0];
             var state = mov2states[i][1]
             var data = [
                 acao,
+                mov.data.toLocaleDateString(),
                 mov.compra() ? "Vest" : "Venda",
                 mov.numAcoes,
                 asCurrency(mov.preco),
