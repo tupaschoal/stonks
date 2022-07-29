@@ -15,7 +15,7 @@ table, td {
 <body>
   <h1>Adicionar arquivo de movimentações</h1>
 
-  <input type="file" name="inputfile" accept=".csv" id="inputfile"/>
+  <input type="file" name="inputfile" accept=".csv" id="inputfile" multiple/>
   
 <table id="myTable">
 
@@ -126,8 +126,7 @@ function parseDate(date) {
                     parseInt(parts[0]))
 }
 
-function CSVToMovimentacao(text) {
-    var movimentacoes = {};
+function CSVToMovimentacao(text, movimentacoes) {
     var lines = text.split(/\r?\n|\r|\n/g);
     for (let i = 0; i < lines.length; i++) {
         if (lines[i].length == 0) {
@@ -138,14 +137,14 @@ function CSVToMovimentacao(text) {
         if (!(items[0] in movimentacoes)) {
             movimentacoes[items[0]] = []
         }
+
         movimentacoes[items[0]].push(new Movimentacao(
             parseInt(items[2]),
             parseCurrency(items[3]),
-            /*salario=*/true,
+            /*salario=*/false,
             parseDate(items[1]),
             ))
     }
-    return movimentacoes;
 }
 
 function executarMovimentacoes(states, movimentacoes) {
@@ -165,16 +164,20 @@ function executarMovimentacoes(states, movimentacoes) {
 
 function updateTable(states) {
     var table = document.getElementById("myTable");
-   
+    
+    while (table.rows.length > 1) {
+        table.deleteRow(-1);
+    }
+  
     for (const [acao, mov2states] of Object.entries(states)) {
         for (let i = 0; i < mov2states.length; i++) {          
-            var row = table.insertRow(table.nrows);
+            var row = table.insertRow(-1);
             var mov = mov2states[i][0];
             var state = mov2states[i][1]
             var data = [
                 acao,
                 mov.data.toLocaleDateString(),
-                mov.compra() ? "Vest" : "Venda",
+                mov.compra() ? "Compra" : "Venda",
                 mov.numAcoes,
                 asCurrency(mov.preco),
                 "",
@@ -193,7 +196,6 @@ function updateTable(states) {
 }
 
 function sortByDate(acao2movs) {
-    console.log("Breno")
     for (let [acao, movs] of Object.entries(acao2movs)) {
         console.log(acao)
         movs.sort(function (mov1, mov2) {
@@ -202,19 +204,24 @@ function sortByDate(acao2movs) {
     }
 }
 
+var movimentacoes = {};
+
+function readFile(file) {
+    var fr = new FileReader();
+    fr.onload = function() {
+        CSVToMovimentacao(fr.result, movimentacoes);
+        sortByDate(movimentacoes);   
+        var states = {};
+        executarMovimentacoes(states, movimentacoes);
+        updateTable(states);
+    };
+    fr.readAsText(file);
+}
+
 document.getElementById('inputfile')
     .addEventListener('change', function() {
-    
-        var fr=new FileReader();
-        fr.onload= function() {
-            var movimentacoes = CSVToMovimentacao(fr.result);
-            sortByDate(movimentacoes);
-            
-            var states = {};
-            executarMovimentacoes(states, movimentacoes)
-            updateTable(states);
+        for (let i = 0; i < this.files.length; i++) {
+            readFile(this.files[i]);
         }
-          
-        fr.readAsText(this.files[0]);
     })
 </script>
