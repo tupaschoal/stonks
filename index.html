@@ -170,12 +170,13 @@ function updateTable(states) {
     }
   
     for (const [acao, mov2states] of Object.entries(states)) {
+        table.insertRow(-1).insertCell(0).innerHTML = acao;
         for (let i = 0; i < mov2states.length; i++) {          
             var row = table.insertRow(-1);
             var mov = mov2states[i][0];
             var state = mov2states[i][1]
             var data = [
-                acao,
+                "",
                 mov.data.toLocaleDateString(),
                 mov.compra() ? "Compra" : "Venda",
                 mov.numAcoes,
@@ -192,7 +193,9 @@ function updateTable(states) {
                 row.insertCell(j).innerHTML = data[j]
             }
         }
+
     }
+
 }
 
 function sortByDate(acao2movs) {
