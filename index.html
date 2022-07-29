@@ -192,12 +192,24 @@ function updateTable(states) {
     }
 }
 
+function sortByDate(acao2movs) {
+    console.log("Breno")
+    for (let [acao, movs] of Object.entries(acao2movs)) {
+        console.log(acao)
+        movs.sort(function (mov1, mov2) {
+            return mov1.data < mov2.data ? -1 : 1;
+        });
+    }
+}
+
 document.getElementById('inputfile')
     .addEventListener('change', function() {
     
         var fr=new FileReader();
         fr.onload= function() {
             var movimentacoes = CSVToMovimentacao(fr.result);
+            sortByDate(movimentacoes);
+            
             var states = {};
             executarMovimentacoes(states, movimentacoes)
             updateTable(states);
