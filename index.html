@@ -42,18 +42,19 @@ class Movimentacao {
 }
 
 class Estado {
-    constructor(numAcoes, precoMedio, lucroAcumulado) {
+    constructor(numAcoes, precoMedio, lucroAcumulado, impostoAcumulado) {
         this.numAcoes = numAcoes
         this.precoMedio = precoMedio;
         this.lucroAcumulado = lucroAcumulado;
+        this.impostoAcumulado = impostoAcumulado
     }
     
     static default() {
-        return new Estado(0,0,0);
+        return new Estado(0,0,0,0);
     }
     
     clone() {
-        return new Estado(this.numAcoes, this.precoMedio, this.lucroAcumulado)
+        return new Estado(this.numAcoes, this.precoMedio, this.lucroAcumulado, this.impostoAcumulado)
     }
     
     valor() {
@@ -61,7 +62,7 @@ class Estado {
     }
     
     toString() {
-        return "[Estado | numAçoes: " + this.numAcoes + " | preco médio: " + this.precoMedio + " | lucro acumulado: " + this.lucroAcumulado + "]";
+        return "[Estado | numAçoes: " + this.numAcoes + " | preco médio: " + this.precoMedio + " | lucro acumulado: " + this.lucroAcumulado + " | patrimonio: " + this.valor() + " Imposto acumulado: " + this.impostoAcumulado + "]";
     }
 }
 
@@ -74,8 +75,13 @@ function aplicarMovimentacao(estado, mov) {
     
     if (mov.compra()) {
         nestado.precoMedio = (valor + mov.numAcoes * mov.preco) / nestado.numAcoes
+        nestado.impostoAcumulado += mov.numAcoes * mov.preco * 0.275;
     } else {
-        nestado.lucroAcumulado += -1 * mov.numAcoes * (mov.preco - nestado.precoMedio);
+        var lucro = -1 * mov.numAcoes * (mov.preco - nestado.precoMedio);
+        if (lucro > 0) {
+            nestado.impostoAcumulado += lucro * 0.15;
+        }
+        nestado.lucroAcumulado += lucro
     }
     
     return nestado
@@ -94,7 +100,7 @@ function CSVToMovimentacao(text) {
         if (!(items[0] in movimentacoes)) {
             movimentacoes[items[0]] = []
         }
-        movimentacoes[items[0]].push(new Movimentacao(parseInt(items[1]), parseFloat(items[2])))
+        movimentacoes[items[0]].push(new Movimentacao(parseInt(items[1]), parseFloat(items[2].replace(/,/, '.'))))
     }
 }
 
