@@ -32,6 +32,10 @@ class Movimentacao {
         this.preco = preco;
     }
     
+    static default() {
+        return new Movimentacao(0,0);
+    }
+
     compra() {
         return this.numAcoes > 0
     }
@@ -87,9 +91,8 @@ function aplicarMovimentacao(estado, mov) {
     return nestado
 }
 
-var movimentacoes = {};
-
 function CSVToMovimentacao(text) {
+    var movimentacoes = {};
     var lines = text.split(/\r?\n|\r|\n/g);
     for (let i = 0; i < lines.length; i++) {
         if (lines[i].length == 0) {
@@ -102,22 +105,33 @@ function CSVToMovimentacao(text) {
         }
         movimentacoes[items[0]].push(new Movimentacao(parseInt(items[1]), parseFloat(items[2].replace(/,/, '.'))))
     }
+    return movimentacoes;
 }
 
-var states = {};
-
-function updateTable() {
-    var table = document.getElementById("myTable");
+function executarMovimentacoes(states, movimentacoes) {
     for (const [acao, movs] of Object.entries(movimentacoes)) {
-        var e = Estado.default();
+        if (!(acao in states)) {
+            states[acao] = [[Movimentacao.default(), Estado.default()]]
+        }
         for (let i = 0; i < movs.length; i++) {
+            var last = states[acao][states[acao].length - 1];
+            var mov = movs[i]
+            var last_state = last[1]
+            var new_state = aplicarMovimentacao(last_state, mov)
+            states[acao].push([mov, new_state])
+        }
+    }    
+}
+
+function updateTable(states) {
+    var table = document.getElementById("myTable");
+    for (const [acao, mov2states] of Object.entries(states)) {
+        var e = Estado.default();
+        for (let i = 0; i < mov2states.length; i++) {
             var row = table.insertRow(table.nrows);
             row.insertCell(0).innerHTML = acao;
-            row.insertCell(1).innerHTML = movs[i].numAcoes;            
-            row.insertCell(2).innerHTML = movs[i].preco;
-            row.insertCell(3).innerHTML = e.toString()
-            e = aplicarMovimentacao(e, movs[i])
-            row.insertCell(4).innerHTML = e.toString()
+            row.insertCell(1).innerHTML = mov2states[i][0].toString()            
+            row.insertCell(2).innerHTML = mov2states[i][1].toString()
         }
     }
 }
@@ -127,10 +141,10 @@ document.getElementById('inputfile')
     
         var fr=new FileReader();
         fr.onload= function() {
-            movimentacoes = {};
-            CSVToMovimentacao(fr.result)
-            states = {};
-            updateTable();
+            var movimentacoes = CSVToMovimentacao(fr.result);
+            var states = {};
+            executarMovimentacoes(states, movimentacoes)
+            updateTable(states);
         }
           
         fr.readAsText(this.files[0]);
