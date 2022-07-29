@@ -31,22 +31,54 @@ class Movimentacao {
         this.numAcoes = numAcoes;
         this.preco = preco;
     }
+    
+    compra() {
+        return this.numAcoes > 0
+    }
+    
+    toString() {
+        return "[Mov | numAçoes: " + this.numAcoes + " | preco: " + this.preco + "]";
+    }
 }
 
 class Estado {
-    constructor() {
-        this.numAcoes = 0
-        this.precoMedio = 0
-        this.lucroAcumulado = 0
+    constructor(numAcoes, precoMedio, lucroAcumulado) {
+        this.numAcoes = numAcoes
+        this.precoMedio = precoMedio;
+        this.lucroAcumulado = lucroAcumulado;
+    }
+    
+    static default() {
+        return new Estado(0,0,0);
+    }
+    
+    clone() {
+        return new Estado(this.numAcoes, this.precoMedio, this.lucroAcumulado)
+    }
+    
+    valor() {
+        return this.numAcoes * this.precoMedio
+    }
+    
+    toString() {
+        return "[Estado | numAçoes: " + this.numAcoes + " | preco médio: " + this.precoMedio + " | lucro acumulado: " + this.lucroAcumulado + "]";
     }
 }
 
 function aplicarMovimentacao(estado, mov) {
-    var valor = estado.numAcoes*estado.precoMedio
-    estado.numAcoes += mov.numAcoes
-    if (mov.numAcoes > 0) {
-        precoMedio = (valor + mov.numAcoes * mov.preco) / estado.numAcoes
+    var nestado = estado.clone()
+    
+    var valor = nestado.valor()
+    
+    nestado.numAcoes += mov.numAcoes
+    
+    if (mov.compra()) {
+        nestado.precoMedio = (valor + mov.numAcoes * mov.preco) / nestado.numAcoes
+    } else {
+        nestado.lucroAcumulado += -1 * mov.numAcoes * (mov.preco - nestado.precoMedio);
     }
+    
+    return nestado
 }
 
 var movimentacoes = {};
@@ -62,7 +94,7 @@ function CSVToMovimentacao(text) {
         if (!(items[0] in movimentacoes)) {
             movimentacoes[items[0]] = []
         }
-        movimentacoes[items[0]].push(new Movimentacao(items[1], items[2]))
+        movimentacoes[items[0]].push(new Movimentacao(parseInt(items[1]), parseFloat(items[2])))
     }
 }
 
@@ -71,11 +103,15 @@ var states = {};
 function updateTable() {
     var table = document.getElementById("myTable");
     for (const [acao, movs] of Object.entries(movimentacoes)) {
+        var e = Estado.default();
         for (let i = 0; i < movs.length; i++) {
-            var row = table.insertRow(0);
+            var row = table.insertRow(table.nrows);
             row.insertCell(0).innerHTML = acao;
             row.insertCell(1).innerHTML = movs[i].numAcoes;            
             row.insertCell(2).innerHTML = movs[i].preco;
+            row.insertCell(3).innerHTML = e.toString()
+            e = aplicarMovimentacao(e, movs[i])
+            row.insertCell(4).innerHTML = e.toString()
         }
     }
 }
