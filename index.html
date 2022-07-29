@@ -2,110 +2,55 @@
 <html>
 
 <style>
-body {
-    padding: 0;
-    margin: 0;
-}
-
-form {
-    font-family: Verdana,Tahoma,sans-serif;
-    font-size: 15px;
-    background-color: #CC3300;
-    max-width: 500px;
-}
-
-h1 {
-    margin-bottom: 20px;
-    margin-left: 20px;
-    color: #66FFFF;
-    text-shadow: 5px 5px 5px black;
-}
-
-input, textarea {
-    width: 200px;
-    padding: 10px;
-    color: black;
-    margin-left: 20px;
-    margin-top: 10px;
-    -webkit-border-radius: 5px;
-    -moz-border-radius: 5px;
-    border: 1px solid;
-}
-
-input:hover, textarea:hover, input:focus, textarea:focus {
-    border-color: #000066;
-    box-shadow: 5px 0px 9px #FFFF00;
-    background-color: #66FFFF;
-    color: black;
-    font-weight: bold;
-}
-
-.enviar {
-    background-color: #66FFFF;
-    height: 40px;
-    width: 100px;
-    font-weight: bold;
-    border-radius: 5px;
-    -webkit-border-radius: 5px;
-    -moz-border-radius: 5px;
-    border: 1px solid;
-    color: black;
-}
-
-textarea {
-    width: 400px;
-    height: 120px;
-    line-height: 20px;
-    max-width: 400px;
-}
-
-form label {
-    margin-left: 20px;
-    color: #FFFFFF;
-    font-weight: bold;
+table, td {
+  border: 1px solid black;
 }
 </style>
 
 <head>
-<title>--Formulário Contato--</title>
+<title>Stonks</title>
 <meta charset="utf-8" />
 </head>
 
 <body>
-<form name="meu_form">
+  <h1>Adicionar arquivo de movimentações</h1>
 
-  <h1>Adicionar movimentação</h1>
-
-  <input id="Acao" type="text" placeholder="PETR4" required="required" name="Ação" />
-  <label for="Acao">Ação</label>
-
-  <input id="NumAcoes" type="int" placeholder="400" required="required" name="NumAcoes" />
-  <label for="NumAcoes">Número de ações</label>
-
-  <input id="Preco" type="currency" placeholder="33,15" required="required" name="Preco" />
-  <label for="Preco">Preço por ação</label>
-
-  <input type="submit" class="registrar" onclick="Registrar();" value="Registrar" />
-  
   <input type="file" name="inputfile" accept=".csv" id="inputfile"/>
   
-  <pre id="output"></pre>
+<table id="myTable">
+
+</table>
   
-</form>
+  
 </body>
 </html>
 
 <script>
 class Movimentacao {
-    construtor(numacoes, preco) {
-        this.numacoes = numacoes;
+    constructor(numAcoes, preco) {
+        this.numAcoes = numAcoes;
         this.preco = preco;
+    }
+}
+
+class Estado {
+    constructor() {
+        this.numAcoes = 0
+        this.precoMedio = 0
+        this.lucroAcumulado = 0
+    }
+}
+
+function aplicarMovimentacao(estado, mov) {
+    var valor = estado.numAcoes*estado.precoMedio
+    estado.numAcoes += mov.numAcoes
+    if (mov.numAcoes > 0) {
+        precoMedio = (valor + mov.numAcoes * mov.preco) / estado.numAcoes
     }
 }
 
 var movimentacoes = {};
 
-// CSV to Array of Movimentacao.
 function CSVToMovimentacao(text) {
     var lines = text.split(/\r?\n|\r|\n/g);
     for (let i = 0; i < lines.length; i++) {
@@ -121,12 +66,29 @@ function CSVToMovimentacao(text) {
     }
 }
 
+var states = {};
+
+function updateTable() {
+    var table = document.getElementById("myTable");
+    for (const [acao, movs] of Object.entries(movimentacoes)) {
+        for (let i = 0; i < movs.length; i++) {
+            var row = table.insertRow(0);
+            row.insertCell(0).innerHTML = acao;
+            row.insertCell(1).innerHTML = movs[i].numAcoes;            
+            row.insertCell(2).innerHTML = movs[i].preco;
+        }
+    }
+}
+
 document.getElementById('inputfile')
     .addEventListener('change', function() {
     
         var fr=new FileReader();
         fr.onload= function() {
+            movimentacoes = {};
             CSVToMovimentacao(fr.result)
+            states = {};
+            updateTable();
         }
           
         fr.readAsText(this.files[0]);
