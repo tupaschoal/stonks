@@ -86,6 +86,11 @@ form label {
   <label for="Preco">Preço por ação</label>
 
   <input type="submit" class="registrar" onclick="Registrar();" value="Registrar" />
+  
+  <input type="file" name="inputfile" accept=".csv" id="inputfile"/>
+  
+  <pre id="output"></pre>
+  
 </form>
 </body>
 </html>
@@ -98,16 +103,32 @@ class Movimentacao {
     }
 }
 
-var movimentacoes = []
+var movimentacoes = {};
 
-function Registrar() {
-
-    var acao = document.getElementById("Acao").value;
-    var numacoes = document.getElementById("NumAcoes").value;
-    var preco = document.getElementById("Preco").value;
-   
-    alert('Voce comprou ' + numacoes + " de " + acao + " a " + preco + " reais por ação");
-    
-    movimentacoes.push(new Movimentacao(numacoes, preco));
+// CSV to Array of Movimentacao.
+function CSVToMovimentacao(text) {
+    var lines = text.split(/\r?\n|\r|\n/g);
+    for (let i = 0; i < lines.length; i++) {
+        if (lines[i].length == 0) {
+            continue
+        }
+        
+        var items = lines[i].split(/;/g)
+        if (!(items[0] in movimentacoes)) {
+            movimentacoes[items[0]] = []
+        }
+        movimentacoes[items[0]].push(new Movimentacao(items[1], items[2]))
+    }
 }
+
+document.getElementById('inputfile')
+    .addEventListener('change', function() {
+    
+        var fr=new FileReader();
+        fr.onload= function() {
+            CSVToMovimentacao(fr.result)
+        }
+          
+        fr.readAsText(this.files[0]);
+    })
 </script>
