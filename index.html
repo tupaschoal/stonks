@@ -19,6 +19,21 @@ table, td {
   
 <table id="myTable">
 
+<thead>
+    <tr>
+    <td>Ação</td>
+    <td>Operação</td>
+    <td>Número de ações</td>
+    <td>Preço</td>
+    <td>Estado da carteira</td>
+    <td>Acumulado de ações</td>
+    <td>Preço médio</td>
+    <td>Valor patrimonial</td>
+    <td>Lucro acumulado</td>
+    <td>Imposto acumulado</td>
+    </tr>
+</thead>
+
 </table>
   
   
@@ -134,34 +149,32 @@ function executarMovimentacoes(states, movimentacoes) {
 
 function updateTable(states) {
     var table = document.getElementById("myTable");
-    var hdr = table.createTHead().insertRow(0)
-    hdr.insertCell(0).innerHTML = "Ação"
-    hdr.insertCell(1).innerHTML = "Operação"
-    hdr.insertCell(2).innerHTML = "Número de ações"
-    hdr.insertCell(3).innerHTML = "Preço"
-    hdr.insertCell(4).innerHTML = "Estado da carteira"
-    hdr.insertCell(5).innerHTML = "Acumulado de ações"
-    hdr.insertCell(6).innerHTML = "Preço médio"
-    hdr.insertCell(7).innerHTML = "Valor patrimonial"
-    hdr.insertCell(8).innerHTML = "Lucro acumulado"
-    hdr.insertCell(9).innerHTML = "Imposto acumulado"
+    /*
+
+    */
     
     for (const [acao, mov2states] of Object.entries(states)) {
         var e = Estado.default();
         for (let i = 0; i < mov2states.length; i++) {
             var row = table.insertRow(table.nrows);
-            row.insertCell(0).innerHTML = acao;
             var mov = mov2states[i][0];
-            row.insertCell(1).innerHTML = mov.compra() ? "Vest" : "Venda"
-            row.insertCell(2).innerHTML = mov.numAcoes
-            row.insertCell(3).innerHTML = asCurrency(mov.preco)
             var state = mov2states[i][1]
-            row.insertCell(4)
-            row.insertCell(5).innerHTML = state.numAcoes
-            row.insertCell(6).innerHTML = asCurrency(state.precoMedio)
-            row.insertCell(7).innerHTML = asCurrency(state.valor())
-            row.insertCell(8).innerHTML = asCurrency(state.lucroAcumulado)
-            row.insertCell(9).innerHTML = asCurrency(state.impostoAcumulado)
+            var data = [
+                acao,
+                mov.compra() ? "Vest" : "Venda",
+                mov.numAcoes,
+                asCurrency(mov.preco),
+                "",
+                state.numAcoes,
+                asCurrency(state.precoMedio),
+                asCurrency(state.valor()),
+                asCurrency(state.lucroAcumulado),
+                asCurrency(state.impostoAcumulado),
+            ]
+            
+            for (let j = 0; j < data.length; j++) {
+                row.insertCell(j).innerHTML = data[j]
+            }
         }
     }
 }
