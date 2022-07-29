@@ -31,7 +31,6 @@ table, td {
     <td>Preço médio</td>
     <td>Valor patrimonial</td>
     <td>Lucro acumulado</td>
-    <td>Imposto acumulado</td>
     </tr>
 </thead>
 
@@ -74,7 +73,6 @@ class Estado {
         this.numAcoes = numAcoes
         this.precoMedio = precoMedio;
         this.lucroAcumulado = lucroAcumulado;
-        this.impostoAcumulado = impostoAcumulado
         this.data = data
     }
     
@@ -100,14 +98,8 @@ function aplicarMovimentacao(estado, mov) {
     
     if (mov.compra()) {
         nestado.precoMedio = (valor + mov.numAcoes * mov.preco) / nestado.numAcoes
-        if (mov.salario) {
-            nestado.impostoAcumulado += mov.numAcoes * mov.preco * 0.275;
-        }
     } else {
         var lucro = -1 * mov.numAcoes * (mov.preco - nestado.precoMedio);
-        if (lucro > 0) {
-            nestado.impostoAcumulado += lucro * 0.15;
-        }
         nestado.lucroAcumulado += lucro
     }
     
@@ -191,7 +183,6 @@ function updateTable(states) {
                 asCurrency(state.precoMedio),
                 asCurrency(state.valor()),
                 asCurrency(state.lucroAcumulado),
-                asCurrency(state.impostoAcumulado),
             ]
             
             for (let j = 0; j < data.length; j++) {
