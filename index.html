@@ -17,8 +17,19 @@ table, td {
 
   <input type="file" name="inputfile" accept=".csv" id="inputfile" multiple/>
   
-<table id="myTable">
+<table id="TabelaDeImpostos">
+<thead>
+    <tr>
+    <td>Mes/Ano</td>
+    <td>Total de vendas</td>
+    <td>Lucro acumulado</td>
+    <td>Imposto</td>
+    <td>Isento</td>
+    </tr>
+</thead>
+</table>
 
+<table id="TabelaDeMovimentacoes">
 <thead>
     <tr>
     <td>Ação</td>
@@ -33,7 +44,6 @@ table, td {
     <td>Lucro acumulado</td>
     </tr>
 </thead>
-
 </table>
   
   
@@ -160,7 +170,7 @@ function executarMovimentacoes(states, movimentacoes) {
 }
 
 function updateTable(states) {
-    var table = document.getElementById("myTable");
+    var table = document.getElementById("TabelaDeMovimentacoes");
     
     while (table.rows.length > 1) {
         table.deleteRow(-1);
@@ -191,12 +201,73 @@ function updateTable(states) {
         }
 
     }
+}
 
+function calculateTaxes(states)
+{
+
+    var month2movs = {};
+    for (const [acao, mov2states] of Object.entries(states)) {
+        for (let i = 0; i < mov2states.length; i++) {
+            tmpdate = mov2states[i][0].data
+            date = new Date(tmpdate.getFullYear(), tmpdate.getMonth(), 1);
+            date = date.toLocaleDateString()
+            if (!(date in month2movs)) {
+                month2movs[date] = []
+            }
+            month2movs[date].push(mov2states[i])
+        }
+    }
+    
+    month2tax = {};
+    for (const [month, movs] of Object.entries(month2movs)) {
+        total_vendas = 0;
+        lucro_acumulado = 0;
+        imposto = 0;
+        isento = false;
+        
+        for (let i = 0; i < movs.length; i++) {
+            mov = movs[i][0]
+            st = movs[i][1]
+            
+            if (!mov.compra()) {
+                venda = -1 * mov.preco * mov.numAcoes
+                total_vendas += venda;
+                console.log(st.precoMedio)
+                lucro_acumulado += venda - (-1 * st.precoMedio * mov.numAcoes);
+            }
+        }
+        
+        isento = total_vendas <= 20000;
+        
+        month2tax[month] = [total_vendas, lucro_acumulado, imposto, isento];
+    }
+    
+    return month2tax;
+}
+
+function updateTaxTable(taxes) {
+    var table = document.getElementById("TabelaDeImpostos");
+    
+    while (table.rows.length > 1) {
+        table.deleteRow(-1);
+    }
+  
+    for (const [month, tax] of Object.entries(taxes)) {
+        var row = table.insertRow(-1);
+        row.insertCell(-1).innerHTML = month;
+        for (let j = 0; j < tax.length; j++) {
+            display = tax[j]
+            if (j >= 0 && j < 3) {
+                display = asCurrency(display)
+            }
+            row.insertCell(-1).innerHTML = display
+        }
+    }
 }
 
 function sortByDate(acao2movs) {
     for (let [acao, movs] of Object.entries(acao2movs)) {
-        console.log(acao)
         movs.sort(function (mov1, mov2) {
             return mov1.data < mov2.data ? -1 : 1;
         });
@@ -213,6 +284,7 @@ function readFile(file) {
         var states = {};
         executarMovimentacoes(states, movimentacoes);
         updateTable(states);
+        updateTaxTable(calculateTaxes(states));
     };
     fr.readAsText(file);
 }
