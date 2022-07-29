@@ -111,6 +111,11 @@ function aplicarMovimentacao(estado, mov) {
         nestado.lucroAcumulado += lucro
     }
     
+    if (nestado.numAcoes == 0)
+    {
+        nestado.precoMedio = 0
+    }
+    
     return nestado
 }
 
@@ -170,7 +175,7 @@ function updateTable(states) {
     }
   
     for (const [acao, mov2states] of Object.entries(states)) {
-        table.insertRow(-1).insertCell(0).innerHTML = acao;
+        table.insertRow(-1).insertCell(0).innerHTML = acao
         for (let i = 0; i < mov2states.length; i++) {          
             var row = table.insertRow(-1);
             var mov = mov2states[i][0];
