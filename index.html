@@ -36,23 +36,19 @@ function asCurrency(value) {
     return realBRLocale.format(value)
 }
 
-
 class Movimentacao {
-    constructor(numAcoes, preco) {
+    constructor(numAcoes, preco, salario) {
         this.numAcoes = numAcoes;
         this.preco = preco;
+        this.salario = salario
     }
     
     static default() {
-        return new Movimentacao(0,0);
+        return new Movimentacao(0,0,false);
     }
 
     compra() {
         return this.numAcoes >= 0
-    }
-    
-    toString() {
-        return "[Mov | numAçoes: " + this.numAcoes + " | preco: " + this.preco + "]";
     }
 }
 
@@ -75,10 +71,6 @@ class Estado {
     valor() {
         return this.numAcoes * this.precoMedio
     }
-    
-    toString() {
-        return "[Estado | numAçoes: " + this.numAcoes + " | preco médio: " + this.precoMedio + " | lucro acumulado: " + this.lucroAcumulado + " | patrimonio: " + this.valor() + " Imposto acumulado: " + this.impostoAcumulado + "]";
-    }
 }
 
 function aplicarMovimentacao(estado, mov) {
@@ -90,7 +82,9 @@ function aplicarMovimentacao(estado, mov) {
     
     if (mov.compra()) {
         nestado.precoMedio = (valor + mov.numAcoes * mov.preco) / nestado.numAcoes
-        nestado.impostoAcumulado += mov.numAcoes * mov.preco * 0.275;
+        if (mov.salario) {
+            nestado.impostoAcumulado += mov.numAcoes * mov.preco * 0.275;
+        }
     } else {
         var lucro = -1 * mov.numAcoes * (mov.preco - nestado.precoMedio);
         if (lucro > 0) {
@@ -118,7 +112,7 @@ function CSVToMovimentacao(text) {
         if (!(items[0] in movimentacoes)) {
             movimentacoes[items[0]] = []
         }
-        movimentacoes[items[0]].push(new Movimentacao(parseInt(items[1]), parseCurrency(items[2])))
+        movimentacoes[items[0]].push(new Movimentacao(parseInt(items[1]), parseCurrency(items[2]), /*salario=*/true))
     }
     return movimentacoes;
 }
@@ -140,7 +134,7 @@ function executarMovimentacoes(states, movimentacoes) {
 
 function updateTable(states) {
     var table = document.getElementById("myTable");
-    var hdr = table.insertRow(0)
+    var hdr = table.createTHead().insertRow(0)
     hdr.insertCell(0).innerHTML = "Ação"
     hdr.insertCell(1).innerHTML = "Operação"
     hdr.insertCell(2).innerHTML = "Número de ações"
