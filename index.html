@@ -26,6 +26,17 @@ table, td {
 </html>
 
 <script>
+
+let realBRLocale = Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+});
+
+function asCurrency(value) {
+    return realBRLocale.format(value)
+}
+
+
 class Movimentacao {
     constructor(numAcoes, preco) {
         this.numAcoes = numAcoes;
@@ -91,6 +102,10 @@ function aplicarMovimentacao(estado, mov) {
     return nestado
 }
 
+function parseCurrency(value) {
+    return value.replace(/,/, '.').replace(/[.](?=.*[.])/g, "")
+}
+
 function CSVToMovimentacao(text) {
     var movimentacoes = {};
     var lines = text.split(/\r?\n|\r|\n/g);
@@ -103,7 +118,7 @@ function CSVToMovimentacao(text) {
         if (!(items[0] in movimentacoes)) {
             movimentacoes[items[0]] = []
         }
-        movimentacoes[items[0]].push(new Movimentacao(parseInt(items[1]), parseFloat(items[2].replace(/,/, '.'))))
+        movimentacoes[items[0]].push(new Movimentacao(parseInt(items[1]), parseCurrency(items[2])))
     }
     return movimentacoes;
 }
@@ -145,14 +160,14 @@ function updateTable(states) {
             var mov = mov2states[i][0];
             row.insertCell(1).innerHTML = mov.compra() ? "Vest" : "Venda"
             row.insertCell(2).innerHTML = mov.numAcoes
-            row.insertCell(3).innerHTML = mov.preco.toFixed(2)
+            row.insertCell(3).innerHTML = asCurrency(mov.preco)
             var state = mov2states[i][1]
             row.insertCell(4)
             row.insertCell(5).innerHTML = state.numAcoes
-            row.insertCell(6).innerHTML = state.precoMedio.toFixed(2)
-            row.insertCell(7).innerHTML = state.valor().toFixed(2)
-            row.insertCell(8).innerHTML = state.lucroAcumulado.toFixed(2)
-            row.insertCell(9).innerHTML = state.impostoAcumulado.toFixed(2)
+            row.insertCell(6).innerHTML = asCurrency(state.precoMedio)
+            row.insertCell(7).innerHTML = asCurrency(state.valor())
+            row.insertCell(8).innerHTML = asCurrency(state.lucroAcumulado)
+            row.insertCell(9).innerHTML = asCurrency(state.impostoAcumulado)
         }
     }
 }
