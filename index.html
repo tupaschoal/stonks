@@ -233,11 +233,11 @@ function calculateTaxes(states)
             if (!mov.compra()) {
                 venda = -1 * mov.preco * mov.numAcoes
                 total_vendas += venda;
-                console.log(st.precoMedio)
                 lucro_acumulado += venda - (-1 * st.precoMedio * mov.numAcoes);
             }
         }
         
+        imposto = lucro_acumulado > 0 ? lucro_acumulado * 0.15 : 0;
         isento = total_vendas <= 20000;
         
         month2tax[month] = [total_vendas, lucro_acumulado, imposto, isento];
