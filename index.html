@@ -17,23 +17,13 @@ table, td {
 
   <input type="file" name="inputfile" accept=".csv" id="inputfile" multiple/>
   
-<table id="TabelaDeImpostos">
-<thead>
-    <tr>
-    <td>Mes/Ano</td>
-    <td>Total de vendas</td>
-    <td>Lucro acumulado</td>
-    <td>Imposto</td>
-    <td>Isento</td>
-    </tr>
-</thead>
-</table>
-
 <table id="TabelaDeMovimentacoes">
 <thead>
     <tr>
     <td>Ação</td>
-    <td>Data</td>
+    <td>Ano</td>
+    <td>Mes</td>
+    <td>Dia</td>
     <td>Operação</td>
     <td>Número de ações</td>
     <td>Preço</td>
@@ -99,6 +89,22 @@ class Estado {
     }
 }
 
+class HistoricoDoAtivo {
+    constructor(nome, movs) {
+        this.nome = nome
+        this.movs = movs
+        this.states = [[Movimentacao.default(), Estado.default()]]
+        for (let i = 0; i < movs.length; i++) {
+            var last = this.states[this.states.length - 1];
+            var mov = this.movs[i]
+            var last_state = last[1]
+            var new_state = aplicarMovimentacao(last_state, mov)
+            this.states.push([mov, new_state])
+        }
+        this.states.shift()
+    }
+}
+
 function aplicarMovimentacao(estado, mov) {
     var nestado = estado.clone()
     
@@ -155,18 +161,7 @@ function CSVToMovimentacao(text, movimentacoes) {
 }
 
 function executarMovimentacoes(states, movimentacoes) {
-    for (const [acao, movs] of Object.entries(movimentacoes)) {
-        if (!(acao in states)) {
-            states[acao] = [[Movimentacao.default(), Estado.default()]]
-        }
-        for (let i = 0; i < movs.length; i++) {
-            var last = states[acao][states[acao].length - 1];
-            var mov = movs[i]
-            var last_state = last[1]
-            var new_state = aplicarMovimentacao(last_state, mov)
-            states[acao].push([mov, new_state])
-        }
-    }    
+
 }
 
 function updateTable(states) {
@@ -176,15 +171,40 @@ function updateTable(states) {
         table.deleteRow(-1);
     }
   
-    for (const [acao, mov2states] of Object.entries(states)) {
+    for (const [acao, historico] of Object.entries(states)) {
+
+        mov2states = historico.states
         table.insertRow(-1).insertCell(0).innerHTML = acao
-        for (let i = 0; i < mov2states.length; i++) {          
-            var row = table.insertRow(-1);
+
+        var last_year = 0
+        var last_month = 0
+
+        for (let i = 0; i < mov2states.length; i++) {
+
             var mov = mov2states[i][0];
             var state = mov2states[i][1]
+
+            var changedYear = mov.data.getFullYear() != last_year;
+            if (changedYear) {
+                last_year = mov.data.getFullYear();
+                var r = table.insertRow(-1);
+                r.insertCell(0); // empty
+                r.insertCell(1).innerHTML = last_year
+            }
+
+            if (changedYear || last_month != mov.data.getMonth()) {
+                last_month = mov.data.getMonth();
+                var r = table.insertRow(-1);
+                r.insertCell(0); // empty
+                r.insertCell(1); // empty
+                r.insertCell(2).innerHTML = last_month + 1
+            }
+
+            var row = table.insertRow(-1);
+
             var data = [
-                "",
-                mov.data.toLocaleDateString(),
+                "", "", "",
+                mov.data.getDay()+1,
                 mov.compra() ? "Compra" : "Venda",
                 mov.numAcoes,
                 asCurrency(mov.preco),
@@ -203,69 +223,6 @@ function updateTable(states) {
     }
 }
 
-function calculateTaxes(states)
-{
-
-    var month2movs = {};
-    for (const [acao, mov2states] of Object.entries(states)) {
-        for (let i = 0; i < mov2states.length; i++) {
-            tmpdate = mov2states[i][0].data
-            date = new Date(tmpdate.getFullYear(), tmpdate.getMonth(), 1);
-            date = date.toLocaleDateString()
-            if (!(date in month2movs)) {
-                month2movs[date] = []
-            }
-            month2movs[date].push(mov2states[i])
-        }
-    }
-    
-    month2tax = {};
-    for (const [month, movs] of Object.entries(month2movs)) {
-        total_vendas = 0;
-        lucro_acumulado = 0;
-        imposto = 0;
-        isento = false;
-        
-        for (let i = 0; i < movs.length; i++) {
-            mov = movs[i][0]
-            st = movs[i][1]
-            
-            if (!mov.compra()) {
-                venda = -1 * mov.preco * mov.numAcoes
-                total_vendas += venda;
-                lucro_acumulado += venda - (-1 * st.precoMedio * mov.numAcoes);
-            }
-        }
-        
-        imposto = lucro_acumulado > 0 ? lucro_acumulado * 0.15 : 0;
-        isento = total_vendas <= 20000;
-        
-        month2tax[month] = [total_vendas, lucro_acumulado, imposto, isento];
-    }
-    
-    return month2tax;
-}
-
-function updateTaxTable(taxes) {
-    var table = document.getElementById("TabelaDeImpostos");
-    
-    while (table.rows.length > 1) {
-        table.deleteRow(-1);
-    }
-  
-    for (const [month, tax] of Object.entries(taxes)) {
-        var row = table.insertRow(-1);
-        row.insertCell(-1).innerHTML = month;
-        for (let j = 0; j < tax.length; j++) {
-            display = tax[j]
-            if (j >= 0 && j < 3) {
-                display = asCurrency(display)
-            }
-            row.insertCell(-1).innerHTML = display
-        }
-    }
-}
-
 function sortByDate(acao2movs) {
     for (let [acao, movs] of Object.entries(acao2movs)) {
         movs.sort(function (mov1, mov2) {
@@ -280,11 +237,13 @@ function readFile(file) {
     var fr = new FileReader();
     fr.onload = function() {
         CSVToMovimentacao(fr.result, movimentacoes);
-        sortByDate(movimentacoes);   
+        sortByDate(movimentacoes);
+
         var states = {};
-        executarMovimentacoes(states, movimentacoes);
+        for (const [acao, movs] of Object.entries(movimentacoes)) {
+            states[acao] = new HistoricoDoAtivo(acao, movs);
+        }
         updateTable(states);
-        updateTaxTable(calculateTaxes(states));
     };
     fr.readAsText(file);
 }
