@@ -15,33 +15,56 @@ table, td {
 <body>
   <h1>Adicionar arquivo de movimentações</h1>
 
-  <input type="file" name="inputfile" accept=".csv" id="inputfile" multiple/>
-  
-<table id="TabelaDeMovimentacoes">
+  <input type="file" name="inputfile" accept=".xlsx	" id="inputfile" multiple/>
+
+<br><br>
+
+<h2>Tabela de vendas e lucro por mês com cálculo de imposto a ser pago</h2>
+
+<table id="TabelaDeVendasGlobal">
 <thead>
     <tr>
-    <td>Ação</td>
-    <td>Ano</td>
-    <td>Mes</td>
-    <td>Dia</td>
-    <td>Operação</td>
-    <td>Número de ações</td>
-    <td>Preço</td>
-    <td>Estado da carteira</td>
-    <td>Acumulado de ações</td>
-    <td>Preço médio</td>
-    <td>Valor patrimonial</td>
+    <td>Ano/Mes</td>
+    <td>Vendas no mês</td>
+    <td>Lucro no mês</td>
     <td>Lucro acumulado</td>
+    <td>Imposto</td>
+    <td>Imposto deduzido de prejuízo</td>
     </tr>
 </thead>
 </table>
-  
-  
+
+<br><br>
+<h2>Carteira</h2>
+
+<table id="TabelaDeCarteira">
+<thead>
+    <tr>
+    <td>Ação</td>
+    <td>Quantidade</td>
+    <td>Preço médio</td>
+    <td>Valor de aquisição</td>
+    <td>Valor de mercado</td>
+    <td>Rentabilidade</td>
+    <td>Lucro/Prejuízo</td>
+    </tr>
+</thead>
+</table>
+
+Usamos um proxy server para conseguir acessar dados do Yahoo Finance. Para habilitar o proxy <a href="https://cors-anywhere.herokuapp.com/" target="_blank" rel="noopener noreferrer">entre aqui</a> e clique para autorizar.
+Vai demorar apenas 2 segundos :)
+<br>
+Agora que voce fez isso, cliquea aqui para calcular a rentabilidade:
+<input id="clickMe" type="button" value="clickme" onclick="calculateProfit();"/>
+
+
 </body>
 </html>
 
-<script>
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.13.5/xlsx.full.min.js"></script>
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.13.5/jszip.js"></script>
 
+<script>
 let realBRLocale = Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: "BRL",
@@ -51,84 +74,12 @@ function asCurrency(value) {
     return realBRLocale.format(value)
 }
 
-class Movimentacao {
-    constructor(numAcoes, preco, salario, data) {
-        this.numAcoes = numAcoes;
-        this.preco = preco;
-        this.salario = salario
-        this.data = data
-    }
-    
-    static default() {
-        return new Movimentacao(0,0,false, new Date(1900, 1, 1));
-    }
-
-    compra() {
-        return this.numAcoes >= 0
-    }
-}
-
-class Estado {
-    constructor(numAcoes, precoMedio, lucroAcumulado, impostoAcumulado, data) {
-        this.numAcoes = numAcoes
-        this.precoMedio = precoMedio;
-        this.lucroAcumulado = lucroAcumulado;
-        this.data = data
-    }
-    
-    static default() {
-        return new Estado(0,0,0,0, new Date(1900,1,1));
-    }
-    
-    clone() {
-        return new Estado(this.numAcoes, this.precoMedio, this.lucroAcumulado, this.impostoAcumulado, this.data)
-    }
-    
-    valor() {
-        return this.numAcoes * this.precoMedio
-    }
-}
-
-class HistoricoDoAtivo {
-    constructor(nome, movs) {
-        this.nome = nome
-        this.movs = movs
-        this.states = [[Movimentacao.default(), Estado.default()]]
-        for (let i = 0; i < movs.length; i++) {
-            var last = this.states[this.states.length - 1];
-            var mov = this.movs[i]
-            var last_state = last[1]
-            var new_state = aplicarMovimentacao(last_state, mov)
-            this.states.push([mov, new_state])
-        }
-        this.states.shift()
-    }
-}
-
-function aplicarMovimentacao(estado, mov) {
-    var nestado = estado.clone()
-    
-    var valor = nestado.valor()
-    
-    nestado.numAcoes += mov.numAcoes
-    
-    if (mov.compra()) {
-        nestado.precoMedio = (valor + mov.numAcoes * mov.preco) / nestado.numAcoes
-    } else {
-        var lucro = -1 * mov.numAcoes * (mov.preco - nestado.precoMedio);
-        nestado.lucroAcumulado += lucro
-    }
-    
-    if (nestado.numAcoes == 0)
-    {
-        nestado.precoMedio = 0
-    }
-    
-    return nestado
+function getMonth(date) {
+    return new Date(date.getFullYear(), date.getMonth()+1, 0);
 }
 
 function parseCurrency(value) {
-    return value.replace(/,/, '.').replace(/[.](?=.*[.])/g, "")
+    return parseFloat(value.replace(/,/, '.').replace(/[.](?=.*[.])/g, ""))
 }
 
 function parseDate(date) {
@@ -139,117 +90,213 @@ function parseDate(date) {
                     parseInt(parts[0]))
 }
 
-function CSVToMovimentacao(text, movimentacoes) {
-    var lines = text.split(/\r?\n|\r|\n/g);
-    for (let i = 0; i < lines.length; i++) {
-        if (lines[i].length == 0) {
-            continue
-        }
-        
-        var items = lines[i].split(/;/g)
-        if (!(items[0] in movimentacoes)) {
-            movimentacoes[items[0]] = []
-        }
+var original_ops = [];
+var wallet = [];
+var stockPrice = {};
 
-        movimentacoes[items[0]].push(new Movimentacao(
-            parseInt(items[2]),
-            parseCurrency(items[3]),
-            /*salario=*/false,
-            parseDate(items[1]),
-            ))
-    }
-}
-
-function executarMovimentacoes(states, movimentacoes) {
-
-}
-
-function updateTable(states) {
-    var table = document.getElementById("TabelaDeMovimentacoes");
+function updateTable(opsPerMonth) {
+    var table = document.getElementById("TabelaDeVendasGlobal");
     
     while (table.rows.length > 1) {
         table.deleteRow(-1);
     }
-  
-    for (const [acao, historico] of Object.entries(states)) {
 
-        mov2states = historico.states
-        table.insertRow(-1).insertCell(0).innerHTML = acao
+    for (let m = 0; m < opsPerMonth.length; m++) {
+        var mo = opsPerMonth[m];
+        var r = table.insertRow(-1);
+        r.insertCell(-1).innerHTML = mo.date.toLocaleDateString();
+        r.insertCell(-1).innerHTML = asCurrency(mo.sold);
+        r.insertCell(-1).innerHTML = asCurrency(mo.profit);
+        r.insertCell(-1).innerHTML = asCurrency(mo.accProfit);
+        r.insertCell(-1).innerHTML = asCurrency(mo.taxOnGain);
+        r.insertCell(-1).innerHTML = asCurrency(mo.lossDeducedTaxOnGain);
+    }
+}
 
-        var last_year = 0
-        var last_month = 0
+function updateWalletTable() {
+    var table = document.getElementById("TabelaDeCarteira");
+    
+    while (table.rows.length > 1) {
+        table.deleteRow(-1);
+    }
 
-        for (let i = 0; i < mov2states.length; i++) {
+    for (let i = 0; i < wallet.length; i++) {
+        var s = wallet[i];
+        var r = table.insertRow(-1);
+        r.insertCell(-1).innerHTML = s.ticker;
+        r.insertCell(-1).innerHTML = s.ownedStocks;
+        r.insertCell(-1).innerHTML = asCurrency(s.avgPrice);
+        r.insertCell(-1).innerHTML = asCurrency(s.ownedStocks * s.avgPrice);
+        var mktPrice = (s.ticker in stockPrice) ? stockPrice[s.ticker] : 0;
+        r.insertCell(-1).innerHTML = mktPrice != 0 ? asCurrency(mktPrice) : "-";
+        r.insertCell(-1).innerHTML = mktPrice != 0 ? (100.0 * mktPrice / s.avgPrice - 100) : "-";
+        r.insertCell(-1).innerHTML = mktPrice != 0 ? asCurrency(s.ownedStocks * (mktPrice - s.avgPrice)) : "-";
+    }
+}
 
-            var mov = mov2states[i][0];
-            var state = mov2states[i][1]
+function differentMonth(d1, d2) {
+    return d1.getMonth() != d2.getMonth() || d1.getFullYear() != d2.getFullYear();
+}
 
-            var changedYear = mov.data.getFullYear() != last_year;
-            if (changedYear) {
-                last_year = mov.data.getFullYear();
-                var r = table.insertRow(-1);
-                r.insertCell(0); // empty
-                r.insertCell(1).innerHTML = last_year
-            }
+function processOps(ops) {
+        ops = structuredClone(ops);
 
-            if (changedYear || last_month != mov.data.getMonth()) {
-                last_month = mov.data.getMonth();
-                var r = table.insertRow(-1);
-                r.insertCell(0); // empty
-                r.insertCell(1); // empty
-                r.insertCell(2).innerHTML = last_month + 1
-            }
-
-            var row = table.insertRow(-1);
-
-            var data = [
-                "", "", "",
-                mov.data.getDay()+1,
-                mov.compra() ? "Compra" : "Venda",
-                mov.numAcoes,
-                asCurrency(mov.preco),
-                "",
-                state.numAcoes,
-                asCurrency(state.precoMedio),
-                asCurrency(state.valor()),
-                asCurrency(state.lucroAcumulado),
-            ]
-            
-            for (let j = 0; j < data.length; j++) {
-                row.insertCell(j).innerHTML = data[j]
-            }
+        for (let i = 0; i < ops.length; i++) {
+            ops[i].date = parseDate(ops[i].Data);
+            ops[i].ticker = ops[i]["Produto"].split(" ")[0];
+            ops[i].sell = ops[i]["Entrada/Saída"] == "Debito";
+            ops[i].numStocks = parseInt(ops[i]["Quantidade"]);
+            ops[i].unitPrice = parseCurrency(ops[i]["Preço unitário"]);
         }
 
-    }
-}
-
-function sortByDate(acao2movs) {
-    for (let [acao, movs] of Object.entries(acao2movs)) {
-        movs.sort(function (mov1, mov2) {
-            return mov1.data < mov2.data ? -1 : 1;
+        ops.sort(function(e1, e2) {
+            return e1.date < e2.date ? -1 : 1;
         });
-    }
+
+        // Calculate num stocks + avg buy price
+        var numStocks = {};
+        var avgPrice = {};
+        for (let i = 0; i < ops.length; i++) {
+            var o = ops[i];
+            if (!(o.ticker in numStocks)) { numStocks[o.ticker] = 0; avgPrice[o.ticker] = 0; }
+
+            if (o.sell) {
+                numStocks[o.ticker] -= o.numStocks;
+                o.profit = (o.unitPrice -  avgPrice[o.ticker]) * o.numStocks;
+            } else {
+                var prevMktValue = avgPrice[o.ticker] * numStocks[o.ticker];
+
+                numStocks[o.ticker] += o.numStocks;
+                o.ownedStocks = numStocks[o.ticker];
+
+                var newMktValue = prevMktValue + o.numStocks * o.unitPrice;
+
+                avgPrice[o.ticker] = newMktValue / o.ownedStocks;
+            }
+
+            o.avgPrice = avgPrice[o.ticker];
+        }
+
+        // Separate in operations per month
+        var opsPerMonth = [];
+        var lastDate = new Date;
+        for (let i = 0; i < ops.length; i++) {
+            var m = getMonth(ops[i].date);
+            if (differentMonth(m, lastDate)) {
+                opsPerMonth.push({'date': m, 'ops' : []});
+            }
+            lastDate = m;
+            opsPerMonth[opsPerMonth.length-1].ops.push(ops[i]);
+        }
+
+        // Calculate sold amount
+        var accProfit = 0;
+        for (let m = 0; m < opsPerMonth.length; m++) {
+            var mops = opsPerMonth[m].ops;
+            var sold = 0;
+            var profit = 0;
+            for (let i = 0; i < mops.length; i++) {
+                var o = mops[i];
+                if (o.sell) {
+                    sold += o.unitPrice * o.numStocks;
+                    profit += o.profit;
+                }
+            }
+            accProfit += profit;
+            opsPerMonth[m].sold = sold;
+            opsPerMonth[m].profit = profit;
+
+            var taxOnGain = profit > 0 && sold > 20000 ? 0.15*profit : 0;
+            opsPerMonth[m].taxOnGain = taxOnGain;
+            
+            // If made a bit of profit, but I'm on overall losses, deduce the taxes
+            //     I would have to pay from overall losses
+            if (taxOnGain > 0 && accProfit < 0) {
+                var losses = -accProfit;
+                if (losses >= taxOnGain) {
+                    losses -= taxOnGain;
+                    taxOnGain = 0;
+                } else {
+                    taxOnGain -= losses;
+                    losses = 0;
+                }
+                accProfit = -losses;
+            }
+
+            opsPerMonth[m].lossDeducedTaxOnGain = taxOnGain;
+            opsPerMonth[m].accProfit = accProfit;
+        }
+        return opsPerMonth;
 }
 
-var movimentacoes = {};
+function calculateWallet(opsPerMonth) {
+    var lastOps = {};
+    for (let m = 0; m < opsPerMonth.length; m++) {
+        var mops = opsPerMonth[m].ops;
+        for (let i = 0; i < mops.length; i++) {
+            lastOps[mops[i].ticker] = mops[i];
+        }            
+    }
+
+    var wallet = [];
+    for (const [ticker, lastOp] of Object.entries(lastOps)) {
+        if (lastOp.ownedStocks > 0) {
+            wallet.push({ 'ticker' : ticker, 'ownedStocks' : lastOp.ownedStocks, 'avgPrice' : lastOp.avgPrice });
+        }
+    }
+    return wallet;
+}
+
+
 
 function readFile(file) {
     var fr = new FileReader();
-    fr.onload = function() {
-        CSVToMovimentacao(fr.result, movimentacoes);
-        sortByDate(movimentacoes);
+    fr.onload = function(e) {
+        var workbook = XLSX.read(e.target.result, {type: 'binary'});
+        var Sheet = workbook.SheetNames[0];
+        var excelRows = XLSX.utils.sheet_to_row_object_array(workbook.Sheets[Sheet]);
 
-        var states = {};
-        for (const [acao, movs] of Object.entries(movimentacoes)) {
-            states[acao] = new HistoricoDoAtivo(acao, movs);
-        }
-        updateTable(states);
+        // Remove stock loans
+        excelRows = excelRows.filter(function(v) { return v["Preço unitário"] != " - "; });
+
+        original_ops = original_ops.concat(excelRows);
+
+        var r = processOps(original_ops);
+        wallet = calculateWallet(r);
+        updateTable(r);
+        updateWalletTable();
     };
-    fr.readAsText(file);
+    fr.readAsBinaryString(file);
+}
+
+async function getStockPrice(stock) {
+    const cors_url = "https://cors-anywhere.herokuapp.com/";
+    const yahoo_url = "https://query1.finance.yahoo.com/v8/finance/chart/"
+
+    let url = cors_url + yahoo_url + stock;
+    const response = await fetch(url);
+    const json = await response.json();
+    return json.chart.result[0].meta.previousClose;
+}
+
+function updateStockPrice(ticker) {
+    getStockPrice(ticker + ".SA").then(function(price) {
+        stockPrice[ticker] = price;
+        updateWalletTable();
+    });
+}
+
+function calculateProfit() {
+    stockPrice = {};
+    for (let i = 0; i < wallet.length; i++) {
+        var s = wallet[i];
+        updateStockPrice(s.ticker);
+    }
 }
 
 document.getElementById('inputfile')
     .addEventListener('change', function() {
+        original_ops = [];
         for (let i = 0; i < this.files.length; i++) {
             readFile(this.files[i]);
         }
