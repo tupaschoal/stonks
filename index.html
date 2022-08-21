@@ -36,7 +36,14 @@ table, td {
 
 <br><br>
 <h2>Carteira</h2>
+<br>
+Usamos um proxy server para conseguir acessar dados do Yahoo Finance. Para habilitar o proxy <a href="https://cors-anywhere.herokuapp.com/" target="_blank" rel="noopener noreferrer">entre aqui</a> e clique para autorizar.
+Vai demorar apenas 2 segundos :)
+<br>
+Agora que voce fez isso, clique aqui para calcular a rentabilidade:
+<br><br>
 
+<input id="clickMe" type="button" value="Baixar dados de mercado e calcular rentabilidade" onclick="calculateProfit();"/>
 <table id="TabelaDeCarteira">
 <thead>
     <tr>
@@ -51,11 +58,7 @@ table, td {
 </thead>
 </table>
 
-Usamos um proxy server para conseguir acessar dados do Yahoo Finance. Para habilitar o proxy <a href="https://cors-anywhere.herokuapp.com/" target="_blank" rel="noopener noreferrer">entre aqui</a> e clique para autorizar.
-Vai demorar apenas 2 segundos :)
-<br>
-Agora que voce fez isso, cliquea aqui para calcular a rentabilidade:
-<input id="clickMe" type="button" value="clickme" onclick="calculateProfit();"/>
+
 
 
 </body>
@@ -82,6 +85,8 @@ function parseCurrency(value) {
     return parseFloat(value.replace(/,/, '.').replace(/[.](?=.*[.])/g, ""))
 }
 
+function arrLast(arr) { return arr[arr.length - 1]; }
+
 function parseDate(date) {
     // Expect DD/MM/YYYY
     var parts = date.split("/")
@@ -92,7 +97,7 @@ function parseDate(date) {
 
 var original_ops = [];
 var wallet = [];
-var stockPrice = {};
+var s_stockPrices = {};
 
 function updateTable(opsPerMonth) {
     var table = document.getElementById("TabelaDeVendasGlobal");
@@ -127,7 +132,8 @@ function updateWalletTable() {
         r.insertCell(-1).innerHTML = s.ownedStocks;
         r.insertCell(-1).innerHTML = asCurrency(s.avgPrice);
         r.insertCell(-1).innerHTML = asCurrency(s.ownedStocks * s.avgPrice);
-        var mktPrice = (s.ticker in stockPrice) ? stockPrice[s.ticker] : 0;
+
+        var mktPrice = (s.ticker in s_stockPrices) ? arrLast(s_stockPrices[s.ticker])[1] : 0;
         r.insertCell(-1).innerHTML = mktPrice != 0 ? asCurrency(mktPrice) : "-";
         r.insertCell(-1).innerHTML = mktPrice != 0 ? (100.0 * mktPrice / s.avgPrice - 100) : "-";
         r.insertCell(-1).innerHTML = mktPrice != 0 ? asCurrency(s.ownedStocks * (mktPrice - s.avgPrice)) : "-";
@@ -142,11 +148,11 @@ function processOps(ops) {
         ops = structuredClone(ops);
 
         for (let i = 0; i < ops.length; i++) {
-            ops[i].date = parseDate(ops[i].Data);
-            ops[i].ticker = ops[i]["Produto"].split(" ")[0];
-            ops[i].sell = ops[i]["Entrada/Saída"] == "Debito";
+            ops[i].date = parseDate(ops[i]["Data do Negócio"]);
+            ops[i].ticker = ops[i]["Código de Negociação"];
+            ops[i].sell = ops[i]["Tipo de Movimentação"] == "Venda";
             ops[i].numStocks = parseInt(ops[i]["Quantidade"]);
-            ops[i].unitPrice = parseCurrency(ops[i]["Preço unitário"]);
+            ops[i].unitPrice = parseCurrency(ops[i]["Preço"]);
         }
 
         ops.sort(function(e1, e2) {
@@ -256,9 +262,6 @@ function readFile(file) {
         var Sheet = workbook.SheetNames[0];
         var excelRows = XLSX.utils.sheet_to_row_object_array(workbook.Sheets[Sheet]);
 
-        // Remove stock loans
-        excelRows = excelRows.filter(function(v) { return v["Preço unitário"] != " - "; });
-
         original_ops = original_ops.concat(excelRows);
 
         var r = processOps(original_ops);
@@ -269,28 +272,31 @@ function readFile(file) {
     fr.readAsBinaryString(file);
 }
 
-async function getStockPrice(stock) {
+async function getStockPrices(stock) {
     const cors_url = "https://cors-anywhere.herokuapp.com/";
     const yahoo_url = "https://query1.finance.yahoo.com/v8/finance/chart/"
+    const config = "?metrics=low&interval=1d&range=5y";
 
-    let url = cors_url + yahoo_url + stock;
+    let url = cors_url + yahoo_url + stock + ".SA" + config;
     const response = await fetch(url);
     const json = await response.json();
-    return json.chart.result[0].meta.previousClose;
-}
 
-function updateStockPrice(ticker) {
-    getStockPrice(ticker + ".SA").then(function(price) {
-        stockPrice[ticker] = price;
-        updateWalletTable();
-    });
+    const timestamps = json.chart.result[0].timestamp;
+    const closingValues = json.chart.result[0].indicators.quote[0].close;
+
+    var prices = [];
+    for (let i = 0; i < timestamps.length; i++) {
+        prices.push([new Date(timestamps[i]*1000), closingValues[i]]);
+    }
+
+    s_stockPrices[stock] = prices;
 }
 
 function calculateProfit() {
     stockPrice = {};
     for (let i = 0; i < wallet.length; i++) {
         var s = wallet[i];
-        updateStockPrice(s.ticker);
+        getStockPrices(s.ticker).then(updateWalletTable);
     }
 }
 
