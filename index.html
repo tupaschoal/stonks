@@ -1,5 +1,7 @@
-<!DOCTYPE html>
+  <!DOCTYPE html>
 <html>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.js"></script>
+
 
 <style>
 table, td {
@@ -58,8 +60,7 @@ Agora que voce fez isso, clique aqui para calcular a rentabilidade:
 </thead>
 </table>
 
-
-
+<canvas id="myChart" style="width:100%;max-width:1800px"></canvas>
 
 </body>
 </html>
@@ -100,18 +101,19 @@ function parseDate(date) {
 }
 
 var s_originalOps = [];
+var s_opsPerMonth = [];
 var s_wallet = [];
 var s_stockPrices = {};
 
-function updateTable(opsPerMonth) {
+function updateTable() {
     var table = document.getElementById("TabelaDeVendasGlobal");
     
     while (table.rows.length > 1) {
         table.deleteRow(-1);
     }
 
-    for (let m = 0; m < opsPerMonth.length; m++) {
-        var mo = opsPerMonth[m];
+    for (let m = 0; m < s_opsPerMonth.length; m++) {
+        var mo = s_opsPerMonth[m];
         var r = table.insertRow(-1);
         r.insertCell(-1).innerHTML = mo.date.toLocaleDateString();
         r.insertCell(-1).innerHTML = asCurrency(mo.sold);
@@ -190,6 +192,7 @@ function processOps(ops) {
 
             if (o.sell) {
                 numStocks[o.ticker] -= o.numStocks;
+                o.ownedStocks = numStocks[o.ticker];
                 o.profit = (o.unitPrice -  avgPrice[o.ticker]) * o.numStocks;
             } else {
                 var prevMktValue = avgPrice[o.ticker] * numStocks[o.ticker];
@@ -257,10 +260,10 @@ function processOps(ops) {
         return opsPerMonth;
 }
 
-function calculateWallet(opsPerMonth) {
+function calculateWallet() {
     var lastOps = {};
-    for (let m = 0; m < opsPerMonth.length; m++) {
-        var mops = opsPerMonth[m].ops;
+    for (let m = 0; m < s_opsPerMonth.length; m++) {
+        var mops = s_opsPerMonth[m].ops;
         for (let i = 0; i < mops.length; i++) {
             lastOps[mops[i].ticker] = mops[i];
         }            
@@ -288,10 +291,10 @@ function readFile(file) {
         var excelRows = XLSX.utils.sheet_to_row_object_array(workbook.Sheets[Sheet]);
 
         s_originalOps = s_originalOps.concat(excelRows);
+        s_opsPerMonth = processOps(s_originalOps);
 
-        var r = processOps(s_originalOps);
-        s_wallet = calculateWallet(r);
-        updateTable(r);
+        s_wallet = calculateWallet();
+        updateTable();
         updateWalletTable();
     };
     fr.readAsBinaryString(file);
@@ -299,13 +302,22 @@ function readFile(file) {
 
 async function getStockPrices(stock) {
     const cors_url = "https://cors-anywhere.herokuapp.com/";
-    const yahoo_url = "https://query1.finance.yahoo.com/v8/finance/chart/"
+    const yahoo_url = "https://query1.finance.yahoo.	com/v8/finance/chart/"
     const config = "?metrics=low&interval=1d&range=5y";
 
-    let url = cors_url + yahoo_url + stock + ".SA" + config;
-    const response = await fetch(url);
-    const json = await response.json();
+    var stockSym = stock + ".SA";
+    if (stock == "TIMP3") { stockSym = "TIMS3.SA"; }
+    if (stock == "TIMP3F") { stockSym = "TIMS3F.SA"; }
 
+    let url = cors_url + yahoo_url + stockSym + config;
+    const response = await fetch(url);
+
+    if (response.status != 200) {
+        console.log("Failed to get information for: " + stock);
+        return;
+    }
+
+    const json = await response.json();
     const timestamps = json.chart.result[0].timestamp;
     const closingValues = json.chart.result[0].indicators.quote[0].close;
 
@@ -314,14 +326,88 @@ async function getStockPrices(stock) {
         prices.push([new Date(timestamps[i]*1000), closingValues[i]]);
     }
 
+    console.log("Got price data for: " + stock);
     s_stockPrices[stock] = prices;
 }
 
+function getOpAtDate(ticker, date) {
+    var lastOp = null;
+    for (let m = 0; m < s_opsPerMonth.length; m++) {
+        var mops = s_opsPerMonth[m].ops;
+        for (let i = 0; i < mops.length; i++) {
+            var op = mops[i];
+            if (date < op.date) { return lastOp; }
+            if (ticker == op.ticker) { lastOp = [m, i]; }
+        }
+    }
+    return lastOp;
+}
+
+function updateWalletHistory () {
+    var wh = [];
+    for (const [ticker, prices] of Object.entries(s_stockPrices)) {
+        if (prices.length >= 1244) {
+            wh = prices.map(function (val) { return [val[0], 0]; });
+            break;
+        }
+    }
+    if (wh.length == 0) {
+        console.log("Failed to find reference of dates");
+        updateWalletTable();
+        return;
+    }
+
+    for (const [ticker, prices] of Object.entries(s_stockPrices)) {
+        if (prices.length != wh.length) { continue; }
+
+        for (let i = 0; i < wh.length; i++) {
+            var d = wh[i][0];    
+            const mi = getOpAtDate(ticker, d);
+            if (mi != null) {
+                const op = s_opsPerMonth[mi[0]].ops[mi[1]];
+                wh[i][1] += (prices[i][1] - op.avgPrice)*op.ownedStocks;
+            }
+        }
+    }
+
+    var idx = wh.findIndex( function(v) { return v[1] != 0; } );
+    wh = wh.slice(idx);
+
+    var xValues = wh.map(function(v) { return v[0]; });
+    var yValues = wh.map(function(v) { return v[1]; });
+
+    new Chart("myChart", {
+      type: "line",
+      data: {
+        labels: xValues,
+        datasets: [{
+          fill: false,
+          lineTension: 0,
+          backgroundColor: "rgba(0,0,255,1.0)",
+          borderColor: "rgba(0,0,255,0.1)",
+          data: yValues
+        }]
+      },
+      options: {
+        legend: {display: false},
+      }
+    });
+
+    //console.log(wh);
+    updateWalletTable();
+}
+
 function calculateProfit() {
-    stockPrice = {};
-    for (let i = 0; i < s_wallet.length; i++) {
-        var s = s_wallet[i];
-        getStockPrices(s.ticker).then(updateWalletTable);
+    var requestedStocks = {};
+    for (let m = 0; m < s_opsPerMonth.length; m++) {
+        var mops = s_opsPerMonth[m].ops;
+        for (let i = 0; i < mops.length; i++) {
+            var ticker = mops[i].ticker;
+            if (!(ticker in requestedStocks)) {
+                requestedStocks[ticker] = 1;
+                getStockPrices(ticker).then(updateWalletHistory);
+            }
+        }
     }
 }
 
