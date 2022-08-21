@@ -77,6 +77,10 @@ function asCurrency(value) {
     return realBRLocale.format(value)
 }
 
+function asPercentage(value) {
+    return (100.0*value).toFixed(2) + "%"
+}
+
 function getMonth(date) {
     return new Date(date.getFullYear(), date.getMonth()+1, 0);
 }
@@ -95,8 +99,8 @@ function parseDate(date) {
                     parseInt(parts[0]))
 }
 
-var original_ops = [];
-var wallet = [];
+var s_originalOps = [];
+var s_wallet = [];
 var s_stockPrices = {};
 
 function updateTable(opsPerMonth) {
@@ -125,19 +129,37 @@ function updateWalletTable() {
         table.deleteRow(-1);
     }
 
-    for (let i = 0; i < wallet.length; i++) {
-        var s = wallet[i];
+    var totalProfit = 0
+    var totalAcquirePrice = 0;
+    var totalMktPrice = 0
+
+    for (let i = 0; i < s_wallet.length; i++) {
+        var s = s_wallet[i];
         var r = table.insertRow(-1);
         r.insertCell(-1).innerHTML = s.ticker;
         r.insertCell(-1).innerHTML = s.ownedStocks;
         r.insertCell(-1).innerHTML = asCurrency(s.avgPrice);
         r.insertCell(-1).innerHTML = asCurrency(s.ownedStocks * s.avgPrice);
 
+        totalAcquirePrice += s.ownedStocks * s.avgPrice;
+
         var mktPrice = (s.ticker in s_stockPrices) ? arrLast(s_stockPrices[s.ticker])[1] : 0;
+        totalMktPrice += mktPrice * s.ownedStocks;
+
         r.insertCell(-1).innerHTML = mktPrice != 0 ? asCurrency(mktPrice) : "-";
-        r.insertCell(-1).innerHTML = mktPrice != 0 ? (100.0 * mktPrice / s.avgPrice - 100) : "-";
+        r.insertCell(-1).innerHTML = mktPrice != 0 ? asPercentage(mktPrice / s.avgPrice - 1) : "-";
         r.insertCell(-1).innerHTML = mktPrice != 0 ? asCurrency(s.ownedStocks * (mktPrice - s.avgPrice)) : "-";
+        totalProfit += mktPrice != 0 ? (s.ownedStocks * (mktPrice - s.avgPrice)) : 0;
     }
+
+    var r = table.insertRow(-1);
+    r.insertCell(-1).innerHTML = "Total"
+    r.insertCell(-1).innerHTML = "";
+    r.insertCell(-1).innerHTML = "";
+    r.insertCell(-1).innerHTML = asCurrency(totalAcquirePrice);
+    r.insertCell(-1).innerHTML = totalProfit != 0 ? asCurrency(totalMktPrice) : "-";
+    r.insertCell(-1).innerHTML = totalProfit != 0 ? asPercentage(totalMktPrice / totalAcquirePrice - 1) : "-";
+    r.insertCell(-1).innerHTML = totalProfit != 0 ? asCurrency(totalProfit) : "-";
 }
 
 function differentMonth(d1, d2) {
@@ -250,6 +272,9 @@ function calculateWallet(opsPerMonth) {
             wallet.push({ 'ticker' : ticker, 'ownedStocks' : lastOp.ownedStocks, 'avgPrice' : lastOp.avgPrice });
         }
     }
+
+    wallet.sort(function(a,b) { return a.ticker < b.ticker ? -1 : 1; });
+
     return wallet;
 }
 
@@ -262,10 +287,10 @@ function readFile(file) {
         var Sheet = workbook.SheetNames[0];
         var excelRows = XLSX.utils.sheet_to_row_object_array(workbook.Sheets[Sheet]);
 
-        original_ops = original_ops.concat(excelRows);
+        s_originalOps = s_originalOps.concat(excelRows);
 
-        var r = processOps(original_ops);
-        wallet = calculateWallet(r);
+        var r = processOps(s_originalOps);
+        s_wallet = calculateWallet(r);
         updateTable(r);
         updateWalletTable();
     };
@@ -294,15 +319,15 @@ async function getStockPrices(stock) {
 
 function calculateProfit() {
     stockPrice = {};
-    for (let i = 0; i < wallet.length; i++) {
-        var s = wallet[i];
+    for (let i = 0; i < s_wallet.length; i++) {
+        var s = s_wallet[i];
         getStockPrices(s.ticker).then(updateWalletTable);
     }
 }
 
 document.getElementById('inputfile')
     .addEventListener('change', function() {
-        original_ops = [];
+        s_originalOps = [];
         for (let i = 0; i < this.files.length; i++) {
             readFile(this.files[i]);
         }
