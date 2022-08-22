@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.js"></script>
-
+<script src="https://cdn.jsdelivr.net/npm/chart.js/dist/chart.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 
 <style>
 table, td {
@@ -15,11 +16,20 @@ table, td {
 </head>
 
 <body>
-  <h1>Adicionar arquivo de movimentações</h1>
 
-  <input type="file" name="inputfile" accept=".xlsx	" id="inputfile" multiple/>
+<h1>Stonks</h1>
 
-<br><br>
+Use os dados de movimentações extraídos da B3 para calcular os impostos a pagar em todos os meses.
+Os dados não são armazenados - todos os calculos são executados no seu proprio browser e nenhum dado é compartilhado.
+
+<h2>Obtendo dados da B3</h2>
+<ol>
+<li>Vá ao <a href="https://www.investidor.b3.com.br">site da B3</a> na seção de Extrato > Negociação.</li>
+<li>Clique em "Filtrar" e coloque a data inicial "01/01/XXXX" e data final "30/12/XXXX" onde XXXX é o ano que você fez a primeira movimentação.</li>
+<li>Clique em "Baixar extrato" e selecione a opção de "Arquivo em Excel"</li>
+<li>Repita o processo para coletar as negociações de todos os anos até hoje</li>
+<li>Clique ao lado e importe todos os arquivos de negociação de uma só vez: <input type="file" name="inputfile" accept=".xlsx	" id="inputfile" multiple/>
+</ol>
 
 <h2>Tabela de vendas e lucro por mês com cálculo de imposto a ser pago</h2>
 
@@ -41,11 +51,11 @@ table, td {
 <br>
 Usamos um proxy server para conseguir acessar dados do Yahoo Finance. Para habilitar o proxy <a href="https://cors-anywhere.herokuapp.com/" target="_blank" rel="noopener noreferrer">entre aqui</a> e clique para autorizar.
 Vai demorar apenas 2 segundos :)
-<br>
+<br><br>
 Agora que voce fez isso, clique aqui para calcular a rentabilidade:
+<input id="clickMe" type="button" value="Baixar dados de mercado e calcular rentabilidade" onclick="calculateProfit();"/>
 <br><br>
 
-<input id="clickMe" type="button" value="Baixar dados de mercado e calcular rentabilidade" onclick="calculateProfit();"/>
 <table id="TabelaDeCarteira">
 <thead>
     <tr>
@@ -60,6 +70,8 @@ Agora que voce fez isso, clique aqui para calcular a rentabilidade:
 </thead>
 </table>
 
+<br><br>
+<h2>Gráfico de Lucro/Prejuízo ao longo do tempo</h2>
 <canvas id="myChart" style="width:100%;max-width:1800px"></canvas>
 
 </body>
@@ -376,12 +388,40 @@ function updateWalletHistory () {
     var xValues = wh.map(function(v) { return v[0]; });
     var yValues = wh.map(function(v) { return v[1]; });
 
+    const opts = {
+      scales: {
+        xAxes: {
+          type: 'time',
+            time: {
+        	unit: 'day',
+            unitStepSize: 1,
+            displayFormats: {
+          	  'millisecond': 'MMM dd',
+              'second': 'MMM dd',
+              'minute': 'MMM dd',
+              'hour': 'MMM dd',
+              'day': 'MMM dd',
+              'week': 'MMM dd',
+              'month': 'MMM dd',
+              'quarter': 'MMM dd',
+              'year': 'MMM dd',
+            }
+          }
+        },
+      },
+    };
+
+    let chartStatus = Chart.getChart("myChart"); // <canvas> id
+    if (chartStatus != undefined) {
+      chartStatus.destroy();
+    }
     new Chart("myChart", {
       type: "line",
       data: {
         labels: xValues,
         datasets: [{
-          pointRadius: 1,
+          label: "Lucro/Prejuízo",
+          pointRadius: 3,
           fill: false,
           lineTension: 0,
           backgroundColor: "rgba(0,0,255,1.0)",
@@ -389,9 +429,7 @@ function updateWalletHistory () {
           data: yValues
         }]
       },
-      options: {
-        legend: {display: false},
-      }
+      options : opts,
     });
 
     //console.log(wh);
