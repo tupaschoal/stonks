@@ -71,8 +71,12 @@ Agora que voce fez isso, clique aqui para calcular a rentabilidade:
 </table>
 
 <br><br>
-<h2>Gráfico de Lucro/Prejuízo ao longo do tempo</h2>
-<canvas id="myChart" style="width:100%;max-width:1800px"></canvas>
+<h2>Gráfico de rentabilidade ao longo do tempo</h2>
+<canvas id="graficoRentabilidade" style="width:100%;max-width:1800px"></canvas>
+
+<br><br><h2>Gráfico de Lucro/Prejuízo ao longo do tempo</h2>
+<canvas id="graficoLucroPrejuizo" style="width:100%;max-width:1800px"></canvas>
+
 
 </body>
 </html>
@@ -367,7 +371,7 @@ function updateWalletHistory () {
     for (const [ticker, data] of Object.entries(s_stockPrices)) {
         var prices = data.prices;
         if (prices.length >= 1244) { // hack! I can't get the full history from some stocks. Ignore them completely.
-            wh = prices.map(function (val) { return [val[0], 0]; });
+            wh = prices.map(function (val) { return [val[0], 0, 0]; });
             break;
         }
     }
@@ -395,6 +399,7 @@ function updateWalletHistory () {
                 }
 
                 wh[i][1] += (prices[i][1] - op.avgPrice)*op.ownedStocks + accDiv;
+                wh[i][2] += op.avgPrice*op.ownedStocks;
             }
         }
     }
@@ -403,7 +408,8 @@ function updateWalletHistory () {
     wh = wh.slice(idx);
 
     var xValues = wh.map(function(v) { return v[0]; });
-    var yValues = wh.map(function(v) { return v[1]; });
+    var yValuesLP = wh.map(function(v) { return v[1]; });
+    var yValuesR = wh.map(function(v) { return 100.0*v[1]/v[2]; });
 
     const opts = {
       scales: {
@@ -428,28 +434,48 @@ function updateWalletHistory () {
       },
     };
 
-    let chartStatus = Chart.getChart("myChart"); // <canvas> id
+    let chartStatus = Chart.getChart("graficoRentabilidade"); // <canvas> id
     if (chartStatus != undefined) {
       chartStatus.destroy();
     }
-    new Chart("myChart", {
+    new Chart("graficoRentabilidade", {
       type: "line",
       data: {
         labels: xValues,
         datasets: [{
-          label: "Lucro/Prejuízo",
+          label: "Rentabilidade (%)",
           pointRadius: 3,
           fill: false,
           lineTension: 0,
           backgroundColor: "rgba(0,0,255,1.0)",
           borderColor: "rgba(0,0,255,0.5)",
-          data: yValues
+          data: yValuesR
         }]
       },
       options : opts,
     });
 
-    //console.log(wh);
+    chartStatus = Chart.getChart("graficoLucroPrejuizo"); // <canvas> id
+    if (chartStatus != undefined) {
+      chartStatus.destroy();
+    }
+    new Chart("graficoLucroPrejuizo", {
+      type: "line",
+      data: {
+        labels: xValues,
+        datasets: [{
+          label: "Lucro/Prejuízo (R$)",
+          pointRadius: 3,
+          fill: false,
+          lineTension: 0,
+          backgroundColor: "rgba(0,0,255,1.0)",
+          borderColor: "rgba(0,0,255,0.5)",
+          data: yValuesLP
+        }]
+      },
+      options : opts,
+    });
+
     updateWalletTable();
 }
 
@@ -474,5 +500,7 @@ document.getElementById('inputfile')
             readFile(this.files[i]);
         }
     })
-  
+
+
+
 </script>
