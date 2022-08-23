@@ -157,7 +157,7 @@ function updateWalletTable() {
 
         totalAcquirePrice += s.ownedStocks * s.avgPrice;
 
-        var mktPrice = (s.ticker in s_stockPrices) ? arrLast(s_stockPrices[s.ticker])[1] : 0;
+        var mktPrice = (s.ticker in s_stockPrices) ? arrLast(s_stockPrices[s.ticker].prices)[1] : 0;
         totalMktPrice += mktPrice * s.ownedStocks;
 
         r.insertCell(-1).innerHTML = mktPrice != 0 ? asCurrency(mktPrice) : "-";
@@ -313,9 +313,11 @@ function readFile(file) {
 }
 
 async function getStockPrices(stock) {
+    if (stock in s_stockPrices) { return; }
+
     const cors_url = "https://cors-anywhere.herokuapp.com/";
-    const yahoo_url = "https://query1.finance.yahoo.	com/v8/finance/chart/"
-    const config = "?metrics=low&interval=1d&range=5y";
+    const yahoo_url = "https://query1.finance.yahoo.com/v8/finance/chart/"
+    const config = "?metrics=low&interval=1d&range=5y&events=div";
 
     var stockSym = stock + ".SA";
     if (stock == "TIMP3") { stockSym = "TIMS3.SA"; }
@@ -333,13 +335,18 @@ async function getStockPrices(stock) {
     const timestamps = json.chart.result[0].timestamp;
     const closingValues = json.chart.result[0].indicators.quote[0].close;
 
+    var dividends = null;
+    if ("events" in json.chart.result[0]) {
+        dividends = json.chart.result[0].events.dividends;
+    }
+
     var prices = [];
     for (let i = 0; i < timestamps.length; i++) {
-        prices.push([new Date(timestamps[i]*1000), closingValues[i]]);
+        prices.push([new Date(timestamps[i]*1000), closingValues[i], timestamps[i]]);
     }
 
     console.log("Got price data for: " + stock);
-    s_stockPrices[stock] = prices;
+    s_stockPrices[stock] = { "prices" : prices, "dividends" : dividends };
 }
 
 function getOpAtDate(ticker, date) {
@@ -357,8 +364,9 @@ function getOpAtDate(ticker, date) {
 
 function updateWalletHistory () {
     var wh = [];
-    for (const [ticker, prices] of Object.entries(s_stockPrices)) {
-        if (prices.length >= 1244) {
+    for (const [ticker, data] of Object.entries(s_stockPrices)) {
+        var prices = data.prices;
+        if (prices.length >= 1244) { // hack! I can't get the full history from some stocks. Ignore them completely.
             wh = prices.map(function (val) { return [val[0], 0]; });
             break;
         }
@@ -369,15 +377,24 @@ function updateWalletHistory () {
         return;
     }
 
-    for (const [ticker, prices] of Object.entries(s_stockPrices)) {
+    console.log("Rebuilding wallet");
+
+    for (const [ticker, data] of Object.entries(s_stockPrices)) {
+        var prices = data.prices;
         if (prices.length != wh.length) { continue; }
 
+        var accDiv = 0;
         for (let i = 0; i < wh.length; i++) {
             var d = wh[i][0];    
             const mi = getOpAtDate(ticker, d);
             if (mi != null) {
                 const op = s_opsPerMonth[mi[0]].ops[mi[1]];
-                wh[i][1] += (prices[i][1] - op.avgPrice)*op.ownedStocks;
+
+                if (data.dividends && prices[i][2] in data.dividends) {
+                    accDiv += data.dividends[prices[i][2]].amount * op.ownedStocks;
+                }
+
+                wh[i][1] += (prices[i][1] - op.avgPrice)*op.ownedStocks + accDiv;
             }
         }
     }
@@ -457,4 +474,5 @@ document.getElementById('inputfile')
             readFile(this.files[i]);
         }
     })
+  
 </script>
