@@ -190,6 +190,10 @@ function processOps(ops) {
         for (let i = 0; i < ops.length; i++) {
             ops[i].date = parseDate(ops[i]["Data do Negócio"]);
             ops[i].ticker = ops[i]["Código de Negociação"];
+            // merge fractionary market with regular market tiker
+            if (ops[i].ticker.endsWith("F")) {
+                ops[i].ticker = ops[i].ticker.slice(0, -1);
+            }
             ops[i].sell = ops[i]["Tipo de Movimentação"] == "Venda";
             ops[i].numStocks = parseInt(ops[i]["Quantidade"]);
             ops[i].unitPrice = parseCurrency(ops[i]["Preço"]);
@@ -297,8 +301,6 @@ function calculateWallet() {
     return wallet;
 }
 
-
-
 function readFile(file) {
     var fr = new FileReader();
     fr.onload = function(e) {
@@ -325,7 +327,6 @@ async function getStockPrices(stock) {
 
     var stockSym = stock + ".SA";
     if (stock == "TIMP3") { stockSym = "TIMS3.SA"; }
-    if (stock == "TIMP3F") { stockSym = "TIMS3F.SA"; }
 
     let url = cors_url + yahoo_url + stockSym + config;
     const response = await fetch(url);
@@ -371,7 +372,7 @@ function updateWalletHistory () {
     for (const [ticker, data] of Object.entries(s_stockPrices)) {
         var prices = data.prices;
         if (prices.length >= 1244) { // hack! I can't get the full history from some stocks. Ignore them completely.
-            wh = prices.map(function (val) { return [val[0], 0, 0]; });
+            wh = prices.map(function (val) { return [val[0], 0, 0, 0]; });
             break;
         }
     }
@@ -398,8 +399,9 @@ function updateWalletHistory () {
                     accDiv += data.dividends[prices[i][2]].amount * op.ownedStocks;
                 }
 
-                wh[i][1] += (prices[i][1] - op.avgPrice)*op.ownedStocks + accDiv;
-                wh[i][2] += op.avgPrice*op.ownedStocks;
+                wh[i][1] += (prices[i][1] - op.avgPrice)*op.ownedStocks;
+                wh[i][2] += (prices[i][1] - op.avgPrice)*op.ownedStocks + accDiv;
+                wh[i][3] += op.avgPrice*op.ownedStocks;
             }
         }
     }
@@ -408,8 +410,11 @@ function updateWalletHistory () {
     wh = wh.slice(idx);
 
     var xValues = wh.map(function(v) { return v[0]; });
-    var yValuesLP = wh.map(function(v) { return v[1]; });
-    var yValuesR = wh.map(function(v) { return 100.0*v[1]/v[2]; });
+    var yValuesLPNoDiv = wh.map(function(v) { return v[1]; });
+    var yValuesLP = wh.map(function(v) { return v[2]; });
+    var yValuesR = wh.map(function(v) { return 100.0*v[2]/v[3]; });
+    var yValuesRNoDiv = wh.map(function(v) { return 100.0*v[1]/v[3]; });
+
 
     const opts = {
       scales: {
@@ -450,6 +455,15 @@ function updateWalletHistory () {
           backgroundColor: "rgba(0,0,255,1.0)",
           borderColor: "rgba(0,0,255,0.5)",
           data: yValuesR
+        },
+        {
+          label: "Rentabilidade sem dividendos (%)",
+          pointRadius: 3,
+          fill: false,
+          lineTension: 0,
+          backgroundColor: "rgba(0,180,255,1.0)",
+          borderColor: "rgba(0,180,255,0.5)",
+          data: yValuesRNoDiv
         }]
       },
       options : opts,
@@ -471,6 +485,15 @@ function updateWalletHistory () {
           backgroundColor: "rgba(0,0,255,1.0)",
           borderColor: "rgba(0,0,255,0.5)",
           data: yValuesLP
+        },
+        {
+          label: "Lucro/Prejuízo sem dividendos (R$)",
+          pointRadius: 3,
+          fill: false,
+          lineTension: 0,
+          backgroundColor: "rgba(0,180,255,1.0)",
+          borderColor: "rgba(0,180,255,0.5)",
+          data: yValuesLPNoDiv
         }]
       },
       options : opts,
