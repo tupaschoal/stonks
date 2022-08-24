@@ -78,6 +78,21 @@ Agora que voce fez isso, clique aqui para calcular a rentabilidade:
 <canvas id="graficoLucroPrejuizo" style="width:100%;max-width:1800px"></canvas>
 
 
+<br><br>
+<h2>Tabela de dividendos</h2>
+
+<table id="TabelaDeDividendos">
+<thead>
+    <tr>
+    <td>Data</td>
+    <td>Ticker</td>
+    <td>Valor por ação</td>
+    <td>Ações em posse na data</td>
+    <td>Total recebido</td>
+    </tr>
+</thead>
+</table>
+
 </body>
 </html>
 
@@ -384,6 +399,8 @@ function updateWalletHistory () {
 
     console.log("Rebuilding wallet");
 
+    var dividends = [];
+
     for (const [ticker, data] of Object.entries(s_stockPrices)) {
         var prices = data.prices;
         if (prices.length != wh.length) { continue; }
@@ -395,8 +412,11 @@ function updateWalletHistory () {
             if (mi != null) {
                 const op = s_opsPerMonth[mi[0]].ops[mi[1]];
 
-                if (data.dividends && prices[i][2] in data.dividends) {
-                    accDiv += data.dividends[prices[i][2]].amount * op.ownedStocks;
+                if (data.dividends && op.ownedStocks != 0 && prices[i][2] in data.dividends) {
+                    var amt = data.dividends[prices[i][2]].amount;
+                    var val = amt * op.ownedStocks;
+                    dividends.push([d, ticker, amt, op.ownedStocks, val]);
+                    accDiv += val;
                 }
 
                 wh[i][1] += (prices[i][1] - op.avgPrice)*op.ownedStocks;
@@ -405,6 +425,9 @@ function updateWalletHistory () {
             }
         }
     }
+
+    updateDividendsTable(dividends);
+    updateWalletTable();
 
     var idx = wh.findIndex( function(v) { return v[1] != 0; } );
     wh = wh.slice(idx);
@@ -499,7 +522,27 @@ function updateWalletHistory () {
       options : opts,
     });
 
-    updateWalletTable();
+}
+
+function updateDividendsTable(dividends) {
+    dividends.sort(function(e1, e2) {
+        return e1[0] < e2[0] ? -1 : 1;
+    });
+
+    var table = document.getElementById("TabelaDeDividendos");
+    
+    while (table.rows.length > 1) {
+        table.deleteRow(-1);
+    }
+
+    for (let i = 0; i < dividends.length; i++) {
+        var r = table.insertRow(-1);
+        r.insertCell(-1).innerHTML = dividends[i][0].toLocaleDateString();
+        r.insertCell(-1).innerHTML = dividends[i][1];
+        r.insertCell(-1).innerHTML = asCurrency(dividends[i][2]);
+        r.insertCell(-1).innerHTML = dividends[i][3];
+        r.insertCell(-1).innerHTML = asCurrency(dividends[i][4]);
+    }
 }
 
 function calculateProfit() {
