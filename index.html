@@ -71,14 +71,6 @@ Agora que voce fez isso, clique aqui para calcular a rentabilidade:
 </table>
 
 <br><br>
-<h2>Gráfico de rentabilidade ao longo do tempo</h2>
-<canvas id="graficoRentabilidade" style="width:100%;max-width:1800px"></canvas>
-
-<br><br><h2>Gráfico de Lucro/Prejuízo ao longo do tempo</h2>
-<canvas id="graficoLucroPrejuizo" style="width:100%;max-width:1800px"></canvas>
-
-
-<br><br>
 <h2>Tabela de dividendos</h2>
 
 <table id="TabelaDeDividendos">
@@ -92,6 +84,20 @@ Agora que voce fez isso, clique aqui para calcular a rentabilidade:
     </tr>
 </thead>
 </table>
+
+<br><br>
+<h2>Gráfico de rentabilidade ao longo do tempo</h2>
+<canvas id="graficoRentabilidade" style="width:100%;max-width:1800px"></canvas>
+
+<br><br><h2>Gráfico de Lucro/Prejuízo ao longo do tempo</h2>
+<canvas id="graficoLucroPrejuizo" style="width:100%;max-width:1800px"></canvas>
+
+<input id="ZoomIn" type="button" value="+" onclick="zoomIn();"/>
+<input id="ZoomOut" type="button" value="-" onclick="zoomOut();"/>
+<input id="panLeft" type="button" value="<=" onclick="panLeft();"/>
+<input id="panRight" type="button" value="=>" onclick="panRight();"/>
+<input id="Reset" type="button" value="Reset view" onclick="resetView();"/>
+
 
 </body>
 </html>
@@ -135,6 +141,10 @@ var s_originalOps = [];
 var s_opsPerMonth = [];
 var s_wallet = [];
 var s_stockPrices = {};
+
+var s_wh = [];
+var s_first = 0;
+var s_last = 0;
 
 function updateTable() {
     var table = document.getElementById("TabelaDeVendasGlobal");
@@ -426,11 +436,57 @@ function updateWalletHistory () {
         }
     }
 
+    var idx = wh.findIndex( function(v) { return v[1] != 0; } );
+    var wh = wh.slice(idx);
+
+    s_wh = wh;
+    s_first = 0;
+    s_last = s_wh.length;
+
     updateDividendsTable(dividends);
     updateWalletTable();
+    updateCharts();
+}
 
-    var idx = wh.findIndex( function(v) { return v[1] != 0; } );
-    wh = wh.slice(idx);
+function zoomIn() {
+    var adjust = (s_last - s_first)*0.2;
+    s_first += adjust/2;
+    s_last -= adjust/2;
+    updateCharts();
+}
+
+function zoomOut() {
+    var adjust = (s_last - s_first)*0.25;
+    s_first -= adjust/2;
+    s_last += adjust/2;
+    updateCharts();
+}
+
+function panRight() {
+    var adjust = (s_last - s_first)*0.10;
+    s_first += adjust/2;
+    s_last += adjust/2;
+    updateCharts();
+}
+
+function panLeft() {
+    var adjust = (s_last - s_first)*0.10;
+    s_first -= adjust/2;
+    s_last -= adjust/2;
+    updateCharts();
+}
+
+function resetView() {
+    s_first = 0;
+    s_last = s_wh.length;
+    updateCharts();
+}
+
+function updateCharts() {
+    if (s_first < 0) { s_first = 0; }
+    if (s_last >= s_wh.length) s_last = s_wh.length;
+
+    var wh = s_wh.slice(s_first, s_last);
 
     var xValues = wh.map(function(v) { return v[0]; });
     var yValuesLPNoDiv = wh.map(function(v) { return v[1]; });
@@ -440,6 +496,7 @@ function updateWalletHistory () {
 
 
     const opts = {
+      animation: { duration : 0 },
       scales: {
         xAxes: {
           type: 'time',
@@ -521,7 +578,6 @@ function updateWalletHistory () {
       },
       options : opts,
     });
-
 }
 
 function updateDividendsTable(dividends) {
