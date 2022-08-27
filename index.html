@@ -28,8 +28,12 @@ Os dados não são armazenados - todos os calculos são executados no seu propri
 <li>Clique em "Filtrar" e coloque a data inicial "01/01/XXXX" e data final "30/12/XXXX" onde XXXX é o ano que você fez a primeira movimentação.</li>
 <li>Clique em "Baixar extrato" e selecione a opção de "Arquivo em Excel"</li>
 <li>Repita o processo para coletar as negociações de todos os anos até hoje</li>
-<li>Clique ao lado e importe todos os arquivos de negociação de uma só vez: <input type="file" name="inputfile" accept=".xlsx	" id="inputfile" multiple/>
 </ol>
+
+<h2>Importar dados</h2>
+<input type="file" name="inputfile" accept=".xlsx" id="inputfile" multiple/>
+<br><br>
+<input id="limparDados" type="button" value="Limpar" onclick="clearData();"/>
 
 <h2>Tabela de vendas e lucro por mês com cálculo de imposto a ser pago</h2>
 
@@ -618,9 +622,13 @@ function calculateProfit() {
     }
 }
 
+function clearData() {
+    s_originalOps = [];
+    originalOpsUpdated();
+}
+
 document.getElementById('inputfile')
     .addEventListener('change', function() {
-        s_originalOps = [];
         for (let i = 0; i < this.files.length; i++) {
             readFile(this.files[i]);
         }
