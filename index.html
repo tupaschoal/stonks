@@ -332,15 +332,18 @@ function readFile(file) {
         var workbook = XLSX.read(e.target.result, {type: 'binary'});
         var Sheet = workbook.SheetNames[0];
         var excelRows = XLSX.utils.sheet_to_row_object_array(workbook.Sheets[Sheet]);
-
         s_originalOps = s_originalOps.concat(excelRows);
-        s_opsPerMonth = processOps(s_originalOps);
-
-        s_wallet = calculateWallet();
-        updateTable();
-        updateWalletTable();
+        localStorage.setItem('original_ops', JSON.stringify(s_originalOps));
+        originalOpsUpdated();
     };
     fr.readAsBinaryString(file);
+}
+
+function originalOpsUpdated() {
+    s_opsPerMonth = processOps(s_originalOps);
+    s_wallet = calculateWallet();
+    updateTable();
+    updateWalletTable();
 }
 
 async function getStockPrices(stock) {
@@ -624,5 +627,9 @@ document.getElementById('inputfile')
     })
 
 
+if ('original_ops' in localStorage) {
+    s_originalOps = JSON.parse(localStorage['original_ops']);
+    originalOpsUpdated();
+}
 
 </script>
