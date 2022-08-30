@@ -97,18 +97,32 @@ Agora que voce fez isso, clique aqui para calcular a rentabilidade:
 </table>
 
 <br><br>
+
+<input type="button" value="1w" onclick="viewWeek(1);"/>
+<input type="button" value="2w" onclick="viewWeek(2);"/>
+<input type="button" value="1m" onclick="viewMonth(1);"/>
+<input type="button" value="3m" onclick="viewMonth(3);"/>
+<input type="button" value="6m" onclick="viewMonth(6);"/>
+<input type="button" value="1y" onclick="viewMonth(1*12);"/>
+<input type="button" value="2y" onclick="viewMonth(2*12);"/>
+<input type="button" value="3y" onclick="viewMonth(3*12);"/>
+<input type="button" value="4y" onclick="viewMonth(4*12);"/>
+<input type="button" value="5y" onclick="viewMonth(5*12);"/>
+
+<br>
+<input id="ZoomIn" type="button" value="+" onclick="zoomIn();"/>
+<input id="ZoomOut" type="button" value="-" onclick="zoomOut();"/>
+<input id="panLeft" type="button" value="<=" onclick="panLeft();"/>
+<input id="panRight" type="button" value="=>" onclick="panRight();"/>
+<br>
+<input id="Reset" type="button" value="Reset view" onclick="resetView();"/>
+<br>
+
 <h2>Gráfico de rentabilidade ao longo do tempo</h2>
 <canvas id="graficoRentabilidade" style="width:100%;max-width:1800px"></canvas>
 
 <br><br><h2>Gráfico de Lucro/Prejuízo ao longo do tempo</h2>
 <canvas id="graficoLucroPrejuizo" style="width:100%;max-width:1800px"></canvas>
-
-<input id="ZoomIn" type="button" value="+" onclick="zoomIn();"/>
-<input id="ZoomOut" type="button" value="-" onclick="zoomOut();"/>
-<input id="panLeft" type="button" value="<=" onclick="panLeft();"/>
-<input id="panRight" type="button" value="=>" onclick="panRight();"/>
-<input id="Reset" type="button" value="Reset view" onclick="resetView();"/>
-
 
 </body>
 </html>
@@ -493,6 +507,26 @@ function panLeft() {
 function resetView() {
     s_first = 0;
     s_last = s_wh.length;
+    updateCharts();
+}
+
+function viewWeek(n) {
+    const now = new Date();
+    const pastDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7*n);
+    viewFromDate(pastDate);
+}
+
+function viewMonth(n) {
+    const now = new Date();
+    const pastDate = new Date(now.getFullYear(), now.getMonth()-n, now.getDate());
+    viewFromDate(pastDate);
+}
+
+function viewFromDate(pastDate) {
+    s_last = s_wh.length;
+    for (s_first = s_last - 1; s_first >= 0; s_first -= 1) {
+        if (s_wh[s_first][0] < pastDate) { break; }
+    }
     updateCharts();
 }
 
