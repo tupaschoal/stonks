@@ -74,6 +74,7 @@ Agora que voce fez isso, clique aqui para calcular a rentabilidade:
     <td>Quantidade</td>
     <td>Preço médio</td>
     <td>Valor de aquisição</td>
+    <td>Preço de mercado</td>
     <td>Valor de mercado</td>
     <td>Rentabilidade</td>
     <td>Lucro/Prejuízo</td>
@@ -219,6 +220,7 @@ function updateWalletTable() {
         totalMktPrice += mktPrice * s.ownedStocks;
 
         r.insertCell(-1).innerHTML = mktPrice != 0 ? asCurrency(mktPrice) : "-";
+        r.insertCell(-1).innerHTML = mktPrice != 0 ? asCurrency(s.ownedStocks * (mktPrice)) : "-";
         r.insertCell(-1).innerHTML = mktPrice != 0 ? asPercentage(mktPrice / s.avgPrice - 1) : "-";
         r.insertCell(-1).innerHTML = mktPrice != 0 ? asCurrency(s.ownedStocks * (mktPrice - s.avgPrice)) : "-";
         totalProfit += mktPrice != 0 ? (s.ownedStocks * (mktPrice - s.avgPrice)) : 0;
