@@ -231,6 +231,7 @@ function updateWalletTable() {
     r.insertCell(-1).innerHTML = "";
     r.insertCell(-1).innerHTML = "";
     r.insertCell(-1).innerHTML = asCurrency(totalAcquirePrice);
+    r.insertCell(-1).innerHTML = "";
     r.insertCell(-1).innerHTML = totalProfit != 0 ? asCurrency(totalMktPrice) : "-";
     r.insertCell(-1).innerHTML = totalProfit != 0 ? asPercentage(totalMktPrice / totalAcquirePrice - 1) : "-";
     r.insertCell(-1).innerHTML = totalProfit != 0 ? asCurrency(totalProfit) : "-";
