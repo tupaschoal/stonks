@@ -124,6 +124,9 @@ Agora que voce fez isso, clique aqui para calcular a rentabilidade:
 <br><br><h2>Gráfico de Lucro/Prejuízo ao longo do tempo</h2>
 <canvas id="graficoLucroPrejuizo" style="width:100%;max-width:1800px"></canvas>
 
+<br><br><h2>Valor investido ao longo do tempo</h2>
+<canvas id="graficoInvestido" style="width:100%;max-width:1800px"></canvas>
+
 </body>
 </html>
 
@@ -541,7 +544,7 @@ function updateCharts() {
     var yValuesLP = wh.map(function(v) { return v[2]; });
     var yValuesR = wh.map(function(v) { return 100.0*v[2]/v[3]; });
     var yValuesRNoDiv = wh.map(function(v) { return 100.0*v[1]/v[3]; });
-
+    var yValuesInvested = wh.map(function(v) { return v[3]; });
 
     const opts = {
       animation: { duration : 0 },
@@ -622,6 +625,27 @@ function updateCharts() {
           backgroundColor: "rgba(0,180,255,1.0)",
           borderColor: "rgba(0,180,255,0.5)",
           data: yValuesLPNoDiv
+        }]
+      },
+      options : opts,
+    });
+
+    chartStatus = Chart.getChart("graficoInvestido"); // <canvas> id
+    if (chartStatus != undefined) {
+      chartStatus.destroy();
+    }
+    new Chart("graficoInvestido", {
+      type: "line",
+      data: {
+        labels: xValues,
+        datasets: [{
+          label: "Valor Investido (R$)",
+          pointRadius: 3,
+          fill: false,
+          lineTension: 0,
+          backgroundColor: "rgba(0,0,255,1.0)",
+          borderColor: "rgba(0,0,255,0.5)",
+          data: yValuesInvested
         }]
       },
       options : opts,
