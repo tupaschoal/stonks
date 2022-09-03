@@ -92,6 +92,7 @@ Agora que voce fez isso, clique aqui para calcular a rentabilidade:
     <td>Valor por ação</td>
     <td>Ações em posse na data</td>
     <td>Total recebido</td>
+    <td>Total acumulado</td>
     </tr>
 </thead>
 </table>
@@ -663,13 +664,17 @@ function updateDividendsTable(dividends) {
         table.deleteRow(-1);
     }
 
+    var total = 0;
+
     for (let i = 0; i < dividends.length; i++) {
         var r = table.insertRow(-1);
+        total += dividends[i][4];
         r.insertCell(-1).innerHTML = dividends[i][0].toLocaleDateString();
         r.insertCell(-1).innerHTML = dividends[i][1];
         r.insertCell(-1).innerHTML = asCurrency(dividends[i][2]);
         r.insertCell(-1).innerHTML = dividends[i][3];
         r.insertCell(-1).innerHTML = asCurrency(dividends[i][4]);
+        r.insertCell(-1).innerHTML = asCurrency(total);
     }
 }
 
