@@ -431,7 +431,7 @@ function updateWalletHistory () {
     var wh = [];
     for (const [ticker, data] of Object.entries(s_stockPrices)) {
         var prices = data.prices;
-        if (prices.length >= 1244) { // hack! I can't get the full history from some stocks. Ignore them completely.
+        if (prices.length >= 1240) { // hack! I can't get the full history from some stocks. Ignore them completely.
             wh = prices.map(function (val) { return [val[0], 0, 0, 0]; });
             break;
         }
