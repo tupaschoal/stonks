@@ -119,6 +119,9 @@ Agora que voce fez isso, clique aqui para calcular a rentabilidade:
 <br>
 <input id="Reset" type="button" value="Reset view" onclick="resetView();"/>
 <br>
+<input type="checkbox" id="adjust_rent" name="adjust_rent" value="adjust_rent" checked>
+<label for="vehicle1">Usar visão como ponto zero de rentabilidade</label>
+<br>
 
 <h2>Gráfico de rentabilidade ao longo do tempo</h2>
 <canvas id="graficoRentabilidade" style="width:100%;max-width:1800px"></canvas>
@@ -549,6 +552,18 @@ function updateCharts() {
     if (s_last >= s_wh.length) s_last = s_wh.length;
 
     var wh = s_wh.slice(s_first, s_last);
+
+    var adjust = document.getElementById("adjust_rent").checked;
+
+    var v1z = 0;
+    var v2z = 0;
+    if (adjust) {
+        v1z = wh[0][1];
+        v2z = wh[0][2];
+        console.log("Rebasing. v1z: " + v1z + " v2z: " + v2z);
+        wh = wh.map(function(v) { return [v[0], v[1]-v1z, v[2]-v2z, v[3]]; });
+    }
+
     var xValues = wh.map(function(v) { return v[0]; });
 
     var yValuesLPNoDiv = wh.map(function(v) { return v[1]; });
