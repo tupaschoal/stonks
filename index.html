@@ -580,28 +580,31 @@ function updateCharts() {
         wh = wh.map(function(v) { return {date: v.date, profit: v.profit-profitz, dividends: v.dividends-dividendsz, invested: v.invested}; });
     }
 
+    var invested_acc = 0;
+    wh.forEach( function(v) { invested_acc += v.invested - v.dividends; } );
+    var invested_avg = invested_acc / wh.length;
+
     var xValues = wh.map(function(v) { return v.date; });
 
-    var yValuesLPNoDiv = wh.map(function(v) { return v.profit; });
-
+    var yValuesLP = wh.map(function(v) { return v.profit; });
     makeChart("graficoLucroPrejuizo", xValues,
         ["Lucro/Prejuízo (R$)", yValuesLP]
     );
 
     var yValuesR = wh.map(function(v) { return 100.0*v.profit/(v.invested - v.dividends); });
-    var yValuesRNoDiv = wh.map(function(v) { return 100.0*v.profit/v.invested; });
+    var yValuesROverAvg = wh.map(function(v) { return 100.0*v.profit/invested_avg; });
 
     makeChart("graficoRentabilidade", xValues,
         ["Rentabilidade (%)", yValuesR],
-        ["Rentabilidade sem dividendos (%)", yValuesRNoDiv]
+        ["Rentabilidade na média de investimento (%)", yValuesROverAvg]
     );
 
-    var yValuesInvested = wh.map(function(v) { return v.invested; });
+    var yValuesAvgInvested = wh.map(function(v) { return invested_avg; });
     var yValuesDividends = wh.map(function(v) { return v.invested - v.dividends; });
 
     makeChart("graficoInvestido", xValues,
-        ["Valor Investido (R$)", yValuesInvested],
-        ["Valor Investido - Dividendos (R$)", yValuesDividends]
+        ["Valor Investido - Dividendos (R$)", yValuesDividends],
+        ["Valor Investido - média (R$)", yValuesAvgInvested]
     );
 }
 
