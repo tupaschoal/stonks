@@ -244,6 +244,12 @@ function differentMonth(d1, d2) {
     return d1.getMonth() != d2.getMonth() || d1.getFullYear() != d2.getFullYear();
 }
 
+function sameDay(d1, d2) {
+    return d1.getMonth() == d2.getMonth() &&
+           d1.getFullYear() == d2.getFullYear() &&
+           d1.getDate() == d2.getDate();
+}
+
 function processOps(ops) {
         ops = structuredClone(ops);
 
@@ -442,10 +448,11 @@ function updateWalletHistory () {
     for (const [ticker, data] of Object.entries(s_stockPrices)) {
         var prices = data.prices;
         if (prices.length >= 1240) { // hack! I can't get the full history from some stocks. Ignore them completely.
-            wh = prices.map(function (val) { return [val[0], 0, 0, 0]; });
+            wh = prices.map(function (val) { return {date: val[0], profit: 0, dividends: 0, invested: 0, valid: false}; });
             break;
         }
     }
+
     if (wh.length == 0) {
         console.log("Failed to find reference of dates");
         updateWalletTable();
@@ -458,31 +465,40 @@ function updateWalletHistory () {
 
     for (const [ticker, data] of Object.entries(s_stockPrices)) {
         var prices = data.prices;
-        if (prices.length != wh.length) { continue; }
-
         var accDiv = 0;
-        for (let i = 0; i < wh.length; i++) {
-            var d = wh[i][0];    
+        for (let tp_idx = 0; tp_idx < prices.length; tp_idx++) {
+            var d = prices[tp_idx][0];
+
+            whdi = wh.findIndex( function(v) { return sameDay(d, v.date); } );
+            if (whdi == -1) {
+                console.log("Failed to find day");
+                continue;
+            }
+            whd = wh[whdi];
+            whd.valid = true;
+   
             const mi = getOpAtDate(ticker, d);
             if (mi != null) {
                 const op = s_opsPerMonth[mi[0]].ops[mi[1]];
 
-                if (data.dividends && op.ownedStocks != 0 && prices[i][2] in data.dividends) {
-                    var amt = data.dividends[prices[i][2]].amount;
+                if (data.dividends && op.ownedStocks != 0 && prices[tp_idx][2] in data.dividends) {
+                    var amt = data.dividends[prices[tp_idx][2]].amount;
                     var val = amt * op.ownedStocks;
                     dividends.push([d, ticker, amt, op.ownedStocks, val]);
                     accDiv += val;
                 }
 
-                wh[i][1] += (prices[i][1] - op.avgPrice)*op.ownedStocks;
-                wh[i][2] += (prices[i][1] - op.avgPrice)*op.ownedStocks + accDiv;
-                wh[i][3] += op.avgPrice*op.ownedStocks;
+                whd.profit += (prices[tp_idx][1] - op.avgPrice)*op.ownedStocks;
+                whd.dividends += accDiv;
+                whd.invested += op.avgPrice*op.ownedStocks;
             }
         }
     }
 
-    var idx = wh.findIndex( function(v) { return v[1] != 0; } );
-    var wh = wh.slice(idx);
+    wh = wh.filter(function(v) { return v.valid; });
+
+    var idx = wh.findIndex( function(v) { return v.invested != 0; } );
+    wh = wh.slice(idx);
 
     s_wh = wh;
     s_first = 0;
@@ -542,7 +558,7 @@ function viewMonth(n) {
 function viewFromDate(pastDate) {
     s_last = s_wh.length;
     for (s_first = s_last - 1; s_first >= 0; s_first -= 1) {
-        if (s_wh[s_first][0] < pastDate) { break; }
+        if (s_wh[s_first].date < pastDate) { break; }
     }
     updateCharts();
 }
@@ -558,36 +574,34 @@ function updateCharts() {
     var v1z = 0;
     var v2z = 0;
     if (adjust) {
-        v1z = wh[0][1];
-        v2z = wh[0][2];
-        console.log("Rebasing. v1z: " + v1z + " v2z: " + v2z);
-        wh = wh.map(function(v) { return [v[0], v[1]-v1z, v[2]-v2z, v[3]]; });
+        profitz = wh[0].profit;
+        dividendsz = wh[0].dividends;
+        console.log("Rebasing. profit: " + profitz + " dividends: " + dividendsz);
+        wh = wh.map(function(v) { return {date: v.date, profit: v.profit-profitz, dividends: v.dividends-dividendsz, invested: v.invested}; });
     }
 
-    var xValues = wh.map(function(v) { return v[0]; });
+    var xValues = wh.map(function(v) { return v.date; });
 
-    var yValuesLPNoDiv = wh.map(function(v) { return v[1]; });
-    var yValuesLP = wh.map(function(v) { return v[2]; });
+    var yValuesLPNoDiv = wh.map(function(v) { return v.profit; });
 
     makeChart("graficoLucroPrejuizo", xValues,
-        ["Lucro/Prejuízo (R$)", yValuesLP],
-        ["Lucro/Prejuízo sem dividendos (R$)", yValuesLPNoDiv]
+        ["Lucro/Prejuízo (R$)", yValuesLP]
     );
 
-    var yValuesR = wh.map(function(v) { return 100.0*v[2]/v[3]; });
-    var yValuesRNoDiv = wh.map(function(v) { return 100.0*v[1]/v[3]; });
+    var yValuesR = wh.map(function(v) { return 100.0*v.profit/(v.invested - v.dividends); });
+    var yValuesRNoDiv = wh.map(function(v) { return 100.0*v.profit/v.invested; });
 
     makeChart("graficoRentabilidade", xValues,
         ["Rentabilidade (%)", yValuesR],
         ["Rentabilidade sem dividendos (%)", yValuesRNoDiv]
     );
 
-    var yValuesInvested = wh.map(function(v) { return v[3]; });
-    var yValuesDividends = wh.map(function(v) { return v[2]-v[1]; });
+    var yValuesInvested = wh.map(function(v) { return v.invested; });
+    var yValuesDividends = wh.map(function(v) { return v.invested - v.dividends; });
 
     makeChart("graficoInvestido", xValues,
         ["Valor Investido (R$)", yValuesInvested],
-        ["Dividendos (R$)", yValuesDividends]
+        ["Valor Investido - Dividendos (R$)", yValuesDividends]
     );
 }
 
