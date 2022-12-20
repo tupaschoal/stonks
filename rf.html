@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+
+<style>
+table, td {
+  border: 1px solid black;
+}
+</style>
+
+<head>
+<title>LCA/LCI ou CDB?</title>
+<meta charset="utf-8" />
+</head>
+
+<body>
+
+<h1>LCA/LCI ou CDB?</h1>
+
+Calcule qual vale mais a pena? LCA/LCI IPCA+X% (sem IR) ou CDB IPCA+Y%(IR 15%)
+<br><br>
+
+Taxa do CDB: <input id="taxa" type="number" onchange="calcular();"></input>%</br>
+Prazo: <input id="prazo" type="number" onchange="calcular();"></input> anos</br>
+Expectativa de inflação: <input id="ipca" type="number" onchange="calcular();"></input>%</br>
+
+</br>
+<h3>Esse CDB equivale a um LCA/LCI com taxa de IPCA + <a id="result">??</a> %</h3>
+
+</body>
+</html>
+
+
+<script>
+function calcular() {
+    var taxa = document.getElementById('taxa')
+    var prazo = document.getElementById('prazo')
+    var ipca = document.getElementById('ipca')
+
+    if (taxa.value.length == 0 || prazo.value.length == 0 || ipca.value.length == 0) {
+        result.innerHTML = "??"
+        return
+    }
+    taxa = taxa.value/100
+    prazo = prazo.value
+    ipca = ipca.value/100
+
+    var rent = 1 + taxa + ipca;
+    var rentFinal = Math.pow(rent, prazo);
+    var rentFinalIR = (rentFinal-1) * 0.85 + 1;
+    var rentFinalIRAnual = Math.pow(rentFinalIR, (1/prazo));
+    var taxaFixa = rentFinalIRAnual - 1 - ipca;    
+
+    var result = document.getElementById('result')    
+    result.innerHTML = (100*taxaFixa).toFixed(2);
+}
+
+</script>
