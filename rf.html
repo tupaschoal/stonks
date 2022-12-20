@@ -43,10 +43,13 @@ function calcular() {
     taxa = taxa.value/100
     prazo = prazo.value
     ipca = ipca.value/100
-
+taxa_ir = prazo <= 0.5 ? 0.225
+        : prazo <= 1.0 ? 0.2
+        : prazo <= 2.0 ? 0.175
+                       : 0.15;
     var rent = 1 + taxa + ipca;
     var rentFinal = Math.pow(rent, prazo);
-    var rentFinalIR = (rentFinal-1) * 0.85 + 1;
+    var rentFinalIR = (rentFinal-1) * (1 - taxa_ir) + 1;
     var rentFinalIRAnual = Math.pow(rentFinalIR, (1/prazo));
     var taxaFixa = rentFinalIRAnual - 1 - ipca;    
 
