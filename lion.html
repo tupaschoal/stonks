@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html>
+<style>
+table, td {
+  border: 1px solid black;
+}
+</style>
+
+<head>
+<title>Lion</title>
+<meta charset="utf-8" />
+</head>
+
+<body>
+
+<h1>Lion</h1>
+
+Calculo de imposto a pagar por recebimento/venda de ações no exterior por programa de RSU.
+<br><br>
+<b>Aviso: Eu não sou contador. Vou colocar os cálculos mas confira tudo! Se estiver errado, não é culpa minha.</b>
+
+<h2>Formato de entrada</h2>
+
+Crie um arquivo excel com as seguintes colunas:</br>
+</br>Data: DD/MM/YYYY
+</br>Operação: "Venda" ou "Recebimento"
+</br>Número de ações: Número inteiro
+</br>Preço em dólar: exemplo 150.00
+</br>Cotação: exemplo 5.30
+</br>
+
+Tem que ser a cotação do banco central.
+
+<br><br>
+Coloque todos os seus dados e importe esse arquivo:
+<input type="file" name="inputfile" accept=".xlsx" id="inputfile"/>
+<br><br>
+
+<table id="TabelaImposto">
+<thead>
+    <tr>
+    <td>Ano</td>
+    <td>Mês</td>
+    <td>Dia</td>
+    <td>Operação</td>
+    <td>Número de ações</td>
+    <td>Preço em dólar</td>
+    <td>Cotação</td>
+    <td>Número acumulado de ações</td>
+    <td>Preço médio</td>
+    <td>Imposto por renda</td>
+    <td>Imposto por venda</td>
+    </tr>
+</thead>
+</table>
+
+</body>
+</html>
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.13.5/xlsx.full.min.js"></script>
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.13.5/jszip.js"></script>
+
+<script>
+var s_fileData = [];
+var s_data = {};
+
+let realBRLocale = Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+});
+
+function asCurrency(value) {
+    return realBRLocale.format(value)
+}
+
+function asPercentage(value) {
+    return (100.0*value).toFixed(2) + "%"
+}
+
+function getMonth(date) {
+    return new Date(date.getFullYear(), date.getMonth()+1, 0);
+}
+
+function parseCurrency(value) {
+    return parseFloat(value.replace(/,/, '.').replace(/[.](?=.*[.])/g, ""))
+}
+
+function arrLast(arr) { return arr[arr.length - 1]; }
+
+function parseDate(date) {
+    // Expect DD/MM/YYYY
+    var parts = date.split("/")
+
+    var d = parseInt(parts[1])
+    var m = parseInt(parts[0])
+    var y = parseInt(parts[2])
+    if (y < 50) {
+        y += 2000;
+    }
+        
+    return new Date(y, m-1, d);
+}
+
+function differentMonth(d1, d2) {
+    return d1.getMonth() != d2.getMonth() || d1.getFullYear() != d2.getFullYear();
+}
+
+function sameDay(d1, d2) {
+    return d1.getMonth() == d2.getMonth() &&
+           d1.getFullYear() == d2.getFullYear() &&
+           d1.getDate() == d2.getDate();
+}
+
+function readFile(file) {
+    var fr = new FileReader();
+    fr.onload = function(e) {
+        var workbook = XLSX.read(e.target.result, {type: 'binary'});
+        var Sheet = workbook.SheetNames[0];
+        var excelRows = XLSX.utils.sheet_to_row_object_array(workbook.Sheets[Sheet]);
+        s_fileData = excelRows;
+        dataUpdated();
+    };
+    fr.readAsBinaryString(file);
+}
+
+function registerOp(o) {
+    var y = o.date.getFullYear()
+    var m = o.date.getMonth() + 1
+    if (!(y in s_data)) {
+        s_data[y] = {}
+    }
+    if (!(m in s_data[y])) {
+        s_data[y][m] = []
+    }
+
+    s_data[y][m].push(o);
+    s_data[y][m].sort((a,b) => { return a.date < b.date ? -1 : 1; })
+}
+
+function parseAndRegisterOp(o) {
+    var r = {};
+    r['date'] = parseDate(o['Data']);
+    r['op'] = o['Operação']
+    r['n'] = parseInt(o['Número de ações'])
+    r['price'] = parseFloat(o['Preço em dólar'])
+    r['brlusd'] = parseFloat(o['Cotação'])
+
+    registerOp(r);
+}
+
+function dataUpdated() {
+    s_fileData.forEach(parseAndRegisterOp);
+    printTable();
+}
+
+document.getElementById('inputfile')
+    .addEventListener('change', function() {
+        readFile(this.files[0]);
+    })
+
+function insertEmptyCells(r,n) {
+    for (var i = 0; i < n; i++) {
+        r.insertCell(-1);
+    }
+}
+
+function addCell(r, text, color = null) {
+    c = r.insertCell(-1)
+    c.innerHTML = text;
+    if (color) {
+        c.style.backgroundColor = color
+    }
+}   
+
+function printTable() {
+    var table = document.getElementById("TabelaImposto");
+
+    while (table.rows.length > 1) {
+        table.deleteRow(-1);
+    }
+
+    var n_acc = 0;
+    var avg_price = 0;
+
+    var years = Object.keys(s_data);
+    years.sort((a,b)=>{return a-b;});
+    years.forEach((y) => {
+        var r = table.insertRow(-1);
+        addCell(r,y);
+
+        var months = Object.keys(s_data[y]);
+        months.sort((a,b)=>{return a-b;});
+        months.forEach((m) => {
+            console.log(m)
+            var sold = 0
+            var acc_salary_tax = 0
+            var acc_sell_tax = 0
+
+            var r = table.insertRow(-1);
+            insertEmptyCells(r,1);
+            addCell(r,m);
+
+            s_data[y][m].forEach((op) => {
+                var r = table.insertRow(-1);
+                insertEmptyCells(r,2);
+                addCell(r, op.date.getDate());
+                addCell(r, op.op);
+                addCell(r, op.n);
+                addCell(r, asCurrency(op.price));
+                addCell(r, asCurrency(op.brlusd));
+
+                var salary_tax = 0;
+                var sell_tax = 0
+                if (op.op == "Recebimento") {
+                    avg_price = (avg_price*n_acc + op.price*op.n*op.brlusd)/(n_acc + op.n);
+                    n_acc += op.n;
+                    salary_tax = 0.275*op.n*op.price*op.brlusd;
+                } else {
+                    n_acc -= op.n;
+                    sold += op.n*op.price*op.brlusd;
+                    sell_tax = 0.15*op.n*(op.price*op.brlusd - avg_price)
+                    if (sell_tax < 0) { 
+                        sell_tax = 0;
+                    }
+                }
+                acc_salary_tax += salary_tax
+                acc_sell_tax += sell_tax
+                
+
+                addCell(r, n_acc);
+                addCell(r, asCurrency(avg_price));
+                addCell(r, asCurrency(salary_tax));
+                addCell(r, asCurrency(sell_tax));
+            });
+
+            var r = table.insertRow(-1);
+            insertEmptyCells(r,2);
+            addCell(r, "Resumo do mês");
+            insertEmptyCells(r,4);
+            addCell(r, n_acc);
+            addCell(r, asCurrency(avg_price));
+            addCell(r, asCurrency(acc_salary_tax), acc_salary_tax > 0 ? "red" : null);
+            
+            st = sold < 35000 ? 0 : acc_sell_tax; 
+            addCell(r, asCurrency(st), st > 0 ? "red" : null);
+            
+        });
+    });
+}
+
+</script>
