@@ -49,7 +49,8 @@ Coloque todos os seus dados e importe esse arquivo:
     <td>Valor da operação</td>
     <td></td>
     <td>Número acumulado de ações</td>
-    <td>Preço médio</td>
+    <td>Preço médio ($)</td>
+    <td>Preço médio (R$)</td>
     <td>Imposto por renda</td>
     <td>Imposto por venda</td>
     </tr>
@@ -183,6 +184,7 @@ function printTable() {
 
     var n_acc = 0;
     var avg_price = 0;
+    var avg_price_dol = 0
 
     var years = Object.keys(s_data);
     years.sort((a,b)=>{return a-b;});
@@ -211,7 +213,8 @@ function printTable() {
                 addCell(r, asCurrency(op.price));
                 addCell(r, asCurrency(op.brlusd));
 
-                var op_value = op.n * op.price * op.brlusd
+                var op_value_dol = op.n * op.price
+                var op_value = op_value_dol * op.brlusd
                 addCell(r, asCurrency(op_value));
                 addCell(r, "");
 
@@ -219,6 +222,7 @@ function printTable() {
                 var sell_tax = 0
                 if (op.op == "Recebimento") {
                     avg_price = (avg_price*n_acc + op_value)/(n_acc + op.n);
+                    avg_price_dol = (avg_price_dol*n_acc + op_value_dol)/(n_acc + op.n)
                     n_acc += op.n;
                     salary_tax = 0.275*op_value;
                 } else {
@@ -233,6 +237,7 @@ function printTable() {
                 acc_sell_tax += sell_tax
                 
                 addCell(r, n_acc);
+                addCell(r, "$ "+ avg_price_dol.toFixed(2));
                 addCell(r, asCurrency(avg_price));
                 addCell(r, asCurrency(salary_tax));
                 addCell(r, asCurrency(sell_tax));
@@ -243,6 +248,7 @@ function printTable() {
             addCell(r, "Resumo do mês");
             insertEmptyCells(r,6);
             addCell(r, n_acc);
+            addCell(r, "$ " + avg_price_dol.toFixed(2));
             addCell(r, asCurrency(avg_price));
             addCell(r, asCurrency(acc_salary_tax), acc_salary_tax > 0 ? "red" : null);
             
