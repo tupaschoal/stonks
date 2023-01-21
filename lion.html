@@ -53,6 +53,7 @@ Coloque todos os seus dados e importe esse arquivo:
     <td>Preço médio (R$)</td>
     <td>Imposto por renda</td>
     <td>Imposto por venda</td>
+    <td>Imposto total</td>
     </tr>
 </thead>
 </table>
@@ -245,6 +246,7 @@ function printTable() {
                 addCell(r, asCurrency(avg_price));
                 addCell(r, asCurrency(salary_tax));
                 addCell(r, asCurrency(sell_tax));
+                addCell(r, asCurrency(sell_tax + salary_tax));
             });
 
             var r = table.insertRow(-1);
@@ -254,10 +256,13 @@ function printTable() {
             addCell(r, n_acc);
             addCell(r, asDollar(avg_price_dol));
             addCell(r, asCurrency(avg_price));
-            addCell(r, asCurrency(acc_salary_tax), acc_salary_tax > 0 ? "red" : null);
+            addCell(r, asCurrency(acc_salary_tax));
             
-            st = sold < 35000 ? 0 : acc_sell_tax; 
-            addCell(r, asCurrency(st), st > 0 ? "red" : null);
+            var st = sold < 35000 ? 0 : acc_sell_tax; 
+            addCell(r, asCurrency(st));
+            
+            var t = st + acc_salary_tax
+            addCell(r, asCurrency(t), t > 0 ? "red" : null);
             
         });
     });
