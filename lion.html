@@ -75,6 +75,10 @@ let realBRLocale = Intl.NumberFormat("pt-BR", {
 function asCurrency(value) {
     return realBRLocale.format(value)
 }
+  
+function asDollar(value) {
+    return "$ + value.toFixed(2);
+}
 
 function asPercentage(value) {
     return (100.0*value).toFixed(2) + "%"
@@ -210,7 +214,7 @@ function printTable() {
                 addCell(r, op.date.getDate());
                 addCell(r, op.op);
                 addCell(r, op.n);
-                addCell(r, asCurrency(op.price));
+                addCell(r, asDollar(op.price));
                 addCell(r, asCurrency(op.brlusd));
 
                 var op_value_dol = op.n * op.price
@@ -237,7 +241,7 @@ function printTable() {
                 acc_sell_tax += sell_tax
                 
                 addCell(r, n_acc);
-                addCell(r, "$ "+ avg_price_dol.toFixed(2));
+                addCell(r, asDollar(avg_price_dol));
                 addCell(r, asCurrency(avg_price));
                 addCell(r, asCurrency(salary_tax));
                 addCell(r, asCurrency(sell_tax));
@@ -248,7 +252,7 @@ function printTable() {
             addCell(r, "Resumo do mês");
             insertEmptyCells(r,6);
             addCell(r, n_acc);
-            addCell(r, "$ " + avg_price_dol.toFixed(2));
+            addCell(r, asDollar(avg_price_dol));
             addCell(r, asCurrency(avg_price));
             addCell(r, asCurrency(acc_salary_tax), acc_salary_tax > 0 ? "red" : null);
             
