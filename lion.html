@@ -4,6 +4,47 @@
 table, td {
   border: 1px solid black;
 }
+
+/* Popup container - can be anything you want */
+.popup {
+  position: relative;
+  display: inline-block;
+}
+
+.popupbutton {
+    cursor: pointer;
+}
+
+.popup .popuptext {
+  visibility: hidden;
+  width: 400px;
+  background-color: #555;
+  color: #fff;
+  text-align: left;
+  border-radius: 6px;
+  padding: 8px 0;
+  position: absolute;
+  z-index: 1;
+  bottom: 125%;
+  left: 50%;
+  margin-left: -400px;
+}
+
+.popup .popuptext::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 96%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: #555 transparent transparent transparent;
+}
+
+.popup .show {
+  visibility: visible;
+}
+
 </style>
 
 <head>
@@ -54,6 +95,7 @@ Coloque todos os seus dados e importe esse arquivo:
     <td>Imposto por renda</td>
     <td>Imposto por venda</td>
     <td>Imposto total</td>
+    <td>Instruções para GCAP</td>
     </tr>
 </thead>
 </table>
@@ -72,6 +114,10 @@ let realBRLocale = Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: "BRL",
 });
+
+let brNumber4 = Intl.NumberFormat("pt-BR", { maximumFractionDigits: 4, minimumFractionDigits: 4 });
+let brNumber3 = Intl.NumberFormat("pt-BR", { maximumFractionDigits: 3, minimumFractionDigits: 3 });
+let brNumber2 = Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2, minimumFractionDigits: 2 });
 
 function asCurrency(value) {
     return realBRLocale.format(value)
@@ -190,6 +236,7 @@ function printTable() {
     var n_acc = 0;
     var avg_price = 0;
     var avg_price_dol = 0
+    var first_acq_date = null
 
     var years = Object.keys(s_data);
     years.sort((a,b)=>{return a-b;});
@@ -200,10 +247,11 @@ function printTable() {
         var months = Object.keys(s_data[y]);
         months.sort((a,b)=>{return a-b;});
         months.forEach((m) => {
-            console.log(m)
             var sold = 0
             var acc_salary_tax = 0
             var acc_sell_tax = 0
+
+            var gcaps = []
 
             var r = table.insertRow(-1);
             insertEmptyCells(r,1);
@@ -226,6 +274,9 @@ function printTable() {
                 var salary_tax = 0;
                 var sell_tax = 0
                 if (op.op == "Recebimento") {
+                    if (first_acq_date == null) {
+                        first_acq_date = op.date
+                    }
                     avg_price = (avg_price*n_acc + op_value)/(n_acc + op.n);
                     avg_price_dol = (avg_price_dol*n_acc + op_value_dol)/(n_acc + op.n)
                     n_acc += op.n;
@@ -233,6 +284,18 @@ function printTable() {
                 } else {
                     n_acc -= op.n;
                     sold += op.n*op.price*op.brlusd;
+
+                    gcap = {}
+                    gcap.acq_date = first_acq_date;
+                    gcap.avg_dollar = avg_price / avg_price_dol;
+                    gcap.acq_cost_dollar = avg_price_dol * op.n;
+                    gcap.auto_calculated_cost = gcap.acq_cost_dollar * gcap.avg_dollar;
+                    gcap.sell_date = op.date;
+                    gcap.sell_dollar = op.brlusd;
+                    gcap.sell_amount = op.n*op.price;
+
+                    gcaps.push(gcap)
+                    
                     sell_tax = 0.15*op.n*(op.price*op.brlusd - avg_price)
                     if (sell_tax < 0) { 
                         sell_tax = 0;
@@ -263,9 +326,60 @@ function printTable() {
             
             var t = st + acc_salary_tax
             addCell(r, asCurrency(t), t > 0 ? "red" : null);
-            
+            if (gcaps.length > 0) {
+                addCell(r, generateTooltip(gcaps));
+            }
         });
     });
 }
 
+function generateTooltip(gcaps) {
+    sold = 0
+    tooltip = ""
+    gcaps.forEach((gcap) => {
+        sold += gcap.sell_amount*gcap.sell_dollar
+    });
+    sold_35k = sold < 35000 ? "Não" : "Sim";
+
+    gcaps.forEach((gcap) => {
+        sold += gcap.sell_amount*gcap.sell_dollar
+        tooltip +=
+        `<table>
+            <tr><td>Data de aquisição</td>
+                <td>${gcap.acq_date.toLocaleDateString()}</td></tr>
+            <tr><td>Cotação (média) do dolar na aquisição</td>
+                <td>${brNumber4.format(gcap.avg_dollar)}</td></tr>
+            <tr><td>Custo de aquisição (US$)</td>
+                <td>${brNumber2.format(gcap.acq_cost_dollar)}</td></tr>
+            <tr><td>Custo de aquisição (R$)</td>
+                <td>${brNumber2.format(gcap.auto_calculated_cost)}</td></tr>
+            <tr><td>Data da venda</td>
+                <td>${gcap.sell_date.toLocaleDateString()}</td></tr>
+            <tr><td>Cotação do dolar na venda</td>
+                <td>${brNumber4.format(gcap.sell_dollar)}</td></tr>
+            <tr><td>Preço de venda (US$)</td>
+                <td>${brNumber2.format(gcap.sell_amount)}</td></tr>
+            <tr><td>Vendeu mais de R$35.000,00 do ativo</td>
+                <td>${sold_35k}</td></tr>
+            </table>
+        `;
+    });
+
+    return makePopup("Detalhes", tooltip);
+}
+
+var popupId = 0;
+function makePopup(text, popuptext) {
+    popupId++;
+    id = "mypopup" + popupId;
+
+    return `<div class="popupbutton" onclick='togglePopup("${id}")'>${text}</div>
+            <div class="popup"><span class="popuptext" id="${id}">${popuptext}</span></div>
+           `;
+}
+
+function togglePopup(id) {
+  var popup = document.getElementById(id);
+  popup.classList.toggle("show");
+}
 </script>
