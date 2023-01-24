@@ -564,6 +564,8 @@ function viewFromDate(pastDate) {
 }
 
 function updateCharts() {
+    Object.values(Chart.instances).forEach( (c)=> { c.destroy(); })
+
     if (s_first < 0) { s_first = 0; }
     if (s_last >= s_wh.length) s_last = s_wh.length;
 
