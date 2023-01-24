@@ -569,22 +569,26 @@ function updateCharts() {
     if (s_first < 0) { s_first = 0; }
     if (s_last >= s_wh.length) s_last = s_wh.length;
 
-    var wh = s_wh.slice(s_first, s_last);
-
     var adjust = document.getElementById("adjust_rent").checked;
 
     var v1z = 0;
     var v2z = 0;
+    var invested_acc = 0;
+    var invested_avg = 0;
+    var wh = [];
     if (adjust) {
+        wh = s_wh.slice(s_first, s_last);
         profitz = wh[0].profit;
         dividendsz = wh[0].dividends;
         console.log("Rebasing. profit: " + profitz + " dividends: " + dividendsz);
         wh = wh.map(function(v) { return {date: v.date, profit: v.profit-profitz, dividends: v.dividends-dividendsz, invested: v.invested}; });
+        wh.forEach( function(v) { invested_acc += v.invested - v.dividends; } );
+        invested_avg = invested_acc / wh.length;
+    } else {
+        s_wh.forEach( function(v) { invested_acc += v.invested - v.dividends; } );
+        invested_avg = invested_acc / s_wh.length;
+        wh = s_wh.slice(s_first, s_last);
     }
-
-    var invested_acc = 0;
-    wh.forEach( function(v) { invested_acc += v.invested - v.dividends; } );
-    var invested_avg = invested_acc / wh.length;
 
     var xValues = wh.map(function(v) { return v.date; });
 
@@ -656,10 +660,7 @@ function makeChart(name, x, y1, y2) {
         },
       },
     };
-
-    if (Chart.instances[name] != undefined) {
-        Chart.instances[name].destroy();
-    }
+ 
     new Chart(name, {
       type: "line",
       data: {
