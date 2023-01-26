@@ -426,6 +426,7 @@ async function getStockPrices(stock) {
     delete s_requestedStocks[stock];
 
     if (Object.keys(s_requestedStocks).length == 0) {
+        localStorage.setItem('stock_prices', JSON.stringify(s_stockPrices));
         updateWalletHistory();
     }
 }
@@ -445,6 +446,7 @@ function getOpAtDate(ticker, date) {
 
 function updateWalletHistory () {
     var wh = [];
+    
     for (const [ticker, data] of Object.entries(s_stockPrices)) {
         var prices = data.prices;
         if (prices.length >= 1240) { // hack! I can't get the full history from some stocks. Ignore them completely.
@@ -452,6 +454,7 @@ function updateWalletHistory () {
             break;
         }
     }
+    console.log(wh)
 
     if (wh.length == 0) {
         console.log("Failed to find reference of dates");
@@ -715,7 +718,20 @@ function calculateProfit() {
 
 function clearData() {
     s_originalOps = [];
+    s_stockPrices = [];
     originalOpsUpdated();
+    updateWalletHistory();
+}
+
+function json_deserialize_helper(key,value) {
+  if ( typeof value === 'string' ) {
+    var regexp;
+    regexp = /^\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d.\d\d\dZ$/.exec(value);
+    if ( regexp ) {
+      return new Date(value);
+    }
+  }
+  return value;
 }
 
 document.getElementById('inputfile')
@@ -729,6 +745,12 @@ document.getElementById('inputfile')
 if ('original_ops' in localStorage) {
     s_originalOps = JSON.parse(localStorage['original_ops']);
     originalOpsUpdated();
+}
+
+if ('stock_prices' in localStorage) {
+    s_stockPrices = JSON.parse(localStorage['stock_prices'], json_deserialize_helper);
+    console.log(s_stockPrices);
+    updateWalletHistory();
 }
 
 </script>
