@@ -491,9 +491,9 @@ function updateWalletHistory () {
                     accDiv += val;
                 }
 
-                whd.profit += (prices[tp_idx][1] - op.avgPrice)*op.ownedStocks;
+                whd.invested += op.avgPrice*op.ownedStocks - accDiv;
+                whd.profit += prices[tp_idx][1]*op.ownedStocks - (op.avgPrice*op.ownedStocks - accDiv);
                 whd.dividends += accDiv;
-                whd.invested += op.avgPrice*op.ownedStocks;
             }
         }
     }
@@ -584,12 +584,13 @@ function updateCharts() {
         profitz = wh[0].profit;
         dividendsz = wh[0].dividends;
         console.log("Rebasing. profit: " + profitz + " dividends: " + dividendsz);
-        wh = wh.map(function(v) { return {date: v.date, profit: v.profit-profitz, dividends: v.dividends-dividendsz, invested: v.invested}; });
-        wh.forEach( function(v) { invested_acc += v.invested - v.dividends; } );
+        wh = wh.map(function(v) { return {date: v.date, profit: v.profit-profitz, dividends: v.dividends, invested: v.invested}; });
+        wh.forEach( function(v) { invested_acc += v.invested; } );
         invested_avg = invested_acc / wh.length;
     } else {
-        s_wh.forEach( function(v) { invested_acc += v.invested - v.dividends; } );
-        invested_avg = invested_acc / s_wh.length;
+        wh = s_wh
+        wh.forEach( function(v) { invested_acc += v.invested; } );
+        invested_avg = invested_acc / wh.length;
         wh = s_wh.slice(s_first, s_last);
     }
 
@@ -600,7 +601,7 @@ function updateCharts() {
         ["Lucro/Prejuízo (R$)", yValuesLP]
     );
 
-    var yValuesR = wh.map(function(v) { return 100.0*v.profit/(v.invested - v.dividends); });
+    var yValuesR = wh.map(function(v) { return 100.0*v.profit/v.invested; });
     var yValuesROverAvg = wh.map(function(v) { return 100.0*v.profit/invested_avg; });
 
     makeChart("graficoRentabilidade", xValues,
@@ -609,7 +610,7 @@ function updateCharts() {
     );
 
     var yValuesAvgInvested = wh.map(function(v) { return invested_avg; });
-    var yValuesDividends = wh.map(function(v) { return v.invested - v.dividends; });
+    var yValuesDividends = wh.map(function(v) { return v.invested; });
 
     makeChart("graficoInvestido", xValues,
         ["Valor Investido - Dividendos (R$)", yValuesDividends],
