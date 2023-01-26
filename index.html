@@ -582,15 +582,19 @@ function updateCharts() {
     if (adjust) {
         wh = s_wh.slice(s_first, s_last);
         profitz = wh[0].profit;
-        dividendsz = wh[0].dividends;
-        console.log("Rebasing. profit: " + profitz + " dividends: " + dividendsz);
+        console.log("Rebasing. profit: " + profitz);
         wh = wh.map(function(v) { return {date: v.date, profit: v.profit-profitz, dividends: v.dividends, invested: v.invested}; });
-        wh.forEach( function(v) { invested_acc += v.invested; } );
-        invested_avg = invested_acc / wh.length;
+
+        invested_acc = 0
+        invested_i = 0;
+        invested_avg = wh.map((v,i) => { invested_i++; invested_acc += v.invested; return invested_acc / (invested_i); });
+
     } else {
         wh = s_wh
-        wh.forEach( function(v) { invested_acc += v.invested; } );
-        invested_avg = invested_acc / wh.length;
+
+        invested_acc = 0;
+        invested_avg = wh.map((v,i) => { invested_acc += v.invested; return invested_acc / (i+1); });
+
         wh = s_wh.slice(s_first, s_last);
     }
 
@@ -602,14 +606,14 @@ function updateCharts() {
     );
 
     var yValuesR = wh.map(function(v) { return 100.0*v.profit/v.invested; });
-    var yValuesROverAvg = wh.map(function(v) { return 100.0*v.profit/invested_avg; });
+    var yValuesROverAvg = wh.map(function(v,i) { return 100.0*v.profit/invested_avg[i]; });
 
     makeChart("graficoRentabilidade", xValues,
         ["Rentabilidade (%)", yValuesR],
         ["Rentabilidade na média de investimento (%)", yValuesROverAvg]
     );
 
-    var yValuesAvgInvested = wh.map(function(v) { return invested_avg; });
+    var yValuesAvgInvested = invested_avg;
     var yValuesDividends = wh.map(function(v) { return v.invested; });
 
     makeChart("graficoInvestido", xValues,
