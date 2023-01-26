@@ -596,6 +596,7 @@ function updateCharts() {
         invested_avg = wh.map((v,i) => { invested_acc += v.invested; return invested_acc / (i+1); });
 
         wh = s_wh.slice(s_first, s_last);
+        invested_avg = invested_avg.slice(s_first, s_last);
     }
 
     var xValues = wh.map(function(v) { return v.date; });
