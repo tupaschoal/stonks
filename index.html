@@ -624,6 +624,7 @@ function updateCharts() {
 }
 
 function makeChart(name, x, y1, y2) {
+    x = x.map((d) => { return d.toLocaleDateString(); });
     var datasets = [{
           label: y1[0],
           pointRadius: 3,
