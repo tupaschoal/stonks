@@ -74,6 +74,7 @@ Agora que voce fez isso, clique aqui para calcular a rentabilidade:
     <td>Quantidade</td>
     <td>Preço médio</td>
     <td>Valor de aquisição</td>
+    <td>Valor investido</td>
     <td>Preço de mercado</td>
     <td>Valor de mercado</td>
     <td>Rentabilidade</td>
@@ -175,6 +176,8 @@ var s_opsPerMonth = [];
 var s_wallet = [];
 var s_stockPrices = {};
 
+var s_ymhist = {};
+
 var s_wh = [];
 var s_first = 0;
 var s_last = 0;
@@ -186,47 +189,75 @@ function updateTable() {
         table.deleteRow(-1);
     }
 
-    for (let m = 0; m < s_opsPerMonth.length; m++) {
-        var mo = s_opsPerMonth[m];
+    for (const [y, m2data] of Object.entries(s_ymhist)) {
+    for (const [m, data] of Object.entries(m2data)) {
         var r = table.insertRow(-1);
-        r.insertCell(-1).innerHTML = mo.date.toLocaleDateString();
-        r.insertCell(-1).innerHTML = asCurrency(mo.sold);
-        r.insertCell(-1).innerHTML = asCurrency(mo.profit);
-        r.insertCell(-1).innerHTML = asCurrency(mo.accProfit);
-        r.insertCell(-1).innerHTML = asCurrency(mo.taxOnGain);
-        r.insertCell(-1).innerHTML = asCurrency(mo.lossDeducedTaxOnGain);
+
+        r.insertCell(-1).innerHTML = (parseInt(m)+1) + "/" + y;
+        r.insertCell(-1).innerHTML = asCurrency(data.summary.sold);
+        r.insertCell(-1).innerHTML = asCurrency(data.summary.profit);
+        r.insertCell(-1).innerHTML = asCurrency(data.summary.accProfit);
+        r.insertCell(-1).innerHTML = asCurrency(data.summary.taxOnGain);
+        r.insertCell(-1).innerHTML = asCurrency(data.summary.lossDeducedTaxOnGain);
+    }
     }
 }
 
 function updateWalletTable() {
+    console.log("Updating wallet table")
+    console.log(s_stockPrices);
     var table = document.getElementById("TabelaDeCarteira");
     
     while (table.rows.length > 1) {
         table.deleteRow(-1);
     }
 
+    let day = null;
+    for (const [y, m2data] of Object.entries(s_ymhist)) {
+        for (const [m, data] of Object.entries(m2data)) {
+            day = arrLast(data.days)
+        }
+    }
+
     var totalProfit = 0
     var totalAcquirePrice = 0;
     var totalMktPrice = 0
+    var totalInvested = 0;
 
-    for (let i = 0; i < s_wallet.length; i++) {
-        var s = s_wallet[i];
+    var sorted_wallet = [];
+    for (let [ticker, s] of Object.entries(day.wallet)) {
+        if (s.ownedStocks == 0) {
+            continue;
+        }
+        sorted_wallet.push([ticker, s]);
+    }
+    sorted_wallet = sorted_wallet.sort((a,b) => { return (a[1].ownedStocks*a[1].avgPrice - a[1].profit) - (b[1].ownedStocks*b[1].avgPrice - b[1].profit); });
+
+    for (let i = 0; i < sorted_wallet.length; i++) {
+        const [ticker, s] = sorted_wallet[i];
         var r = table.insertRow(-1);
-        r.insertCell(-1).innerHTML = s.ticker;
+        r.insertCell(-1).innerHTML = ticker;
         r.insertCell(-1).innerHTML = s.ownedStocks;
         r.insertCell(-1).innerHTML = asCurrency(s.avgPrice);
         r.insertCell(-1).innerHTML = asCurrency(s.ownedStocks * s.avgPrice);
 
         totalAcquirePrice += s.ownedStocks * s.avgPrice;
 
-        var mktPrice = (s.ticker in s_stockPrices) ? arrLast(s_stockPrices[s.ticker].prices)[1] : 0;
+        var mktPrice = (ticker in s_stockPrices) ? arrLast(s_stockPrices[ticker].prices)[1] : 0;
         totalMktPrice += mktPrice * s.ownedStocks;
 
+        var invested = s.ownedStocks * s.avgPrice;
+        if (mktPrice != 0) {
+            invested -= ("acc_dividends" in day ? day.acc_dividends[ticker] : 0) + s.profit;
+        }
+        totalInvested += invested;
+
+        r.insertCell(-1).innerHTML = mktPrice != 0 ? asCurrency(invested) : "-";
         r.insertCell(-1).innerHTML = mktPrice != 0 ? asCurrency(mktPrice) : "-";
         r.insertCell(-1).innerHTML = mktPrice != 0 ? asCurrency(s.ownedStocks * (mktPrice)) : "-";
-        r.insertCell(-1).innerHTML = mktPrice != 0 ? asPercentage(mktPrice / s.avgPrice - 1) : "-";
-        r.insertCell(-1).innerHTML = mktPrice != 0 ? asCurrency(s.ownedStocks * (mktPrice - s.avgPrice)) : "-";
-        totalProfit += mktPrice != 0 ? (s.ownedStocks * (mktPrice - s.avgPrice)) : 0;
+        r.insertCell(-1).innerHTML = mktPrice != 0 ? asPercentage((s.ownedStocks*mktPrice - invested)/(invested)) : "-";
+        r.insertCell(-1).innerHTML = mktPrice != 0 ? asCurrency(s.ownedStocks*mktPrice - invested) : "-";
+        totalProfit += mktPrice != 0 ? (s.ownedStocks*mktPrice - invested) : 0;
     }
 
     var r = table.insertRow(-1);
@@ -234,9 +265,10 @@ function updateWalletTable() {
     r.insertCell(-1).innerHTML = "";
     r.insertCell(-1).innerHTML = "";
     r.insertCell(-1).innerHTML = asCurrency(totalAcquirePrice);
+    r.insertCell(-1).innerHTML = totalProfit != 0 ? asCurrency(totalInvested) : "-";
     r.insertCell(-1).innerHTML = "";
     r.insertCell(-1).innerHTML = totalProfit != 0 ? asCurrency(totalMktPrice) : "-";
-    r.insertCell(-1).innerHTML = totalProfit != 0 ? asPercentage(totalMktPrice / totalAcquirePrice - 1) : "-";
+    r.insertCell(-1).innerHTML = totalProfit != 0 ? asPercentage(totalMktPrice / totalInvested - 1) : "-";
     r.insertCell(-1).innerHTML = totalProfit != 0 ? asCurrency(totalProfit) : "-";
 }
 
@@ -251,120 +283,100 @@ function sameDay(d1, d2) {
 }
 
 function processOps(ops) {
-        ops = structuredClone(ops);
+    ops = structuredClone(ops);
 
-        for (let i = 0; i < ops.length; i++) {
-            ops[i].date = parseDate(ops[i]["Data do Negócio"]);
-            ops[i].ticker = ops[i]["Código de Negociação"];
-            // merge fractionary market with regular market tiker
-            if (ops[i].ticker.endsWith("F")) {
-                ops[i].ticker = ops[i].ticker.slice(0, -1);
-            }
-            ops[i].sell = ops[i]["Tipo de Movimentação"] == "Venda";
-            ops[i].numStocks = parseInt(ops[i]["Quantidade"]);
-            ops[i].unitPrice = parseCurrency(ops[i]["Preço"]);
+    for (let i = 0; i < ops.length; i++) {
+        ops[i].date = parseDate(ops[i]["Data do Negócio"]);
+        ops[i].ticker = ops[i]["Código de Negociação"];
+        // merge fractionary market with regular market tiker
+        if (ops[i].ticker.endsWith("F")) {
+            ops[i].ticker = ops[i].ticker.slice(0, -1);
         }
+        ops[i].sell = ops[i]["Tipo de Movimentação"] == "Venda";
+        ops[i].numStocks = parseInt(ops[i]["Quantidade"]);
+        ops[i].unitPrice = parseCurrency(ops[i]["Preço"]);
+    }
 
-        ops.sort(function(e1, e2) {
-            return e1.date < e2.date ? -1 : 1;
-        });
+    ops.sort(function(e1, e2) {
+        return sameDay(e1.date, e2.date) ? ((e1.sell < e2.sell) ? -1 : 1) 
+                                         : e1.date < e2.date ? -1 : 1;
+    });
 
-        // Calculate num stocks + avg buy price
-        var numStocks = {};
-        var avgPrice = {};
-        for (let i = 0; i < ops.length; i++) {
-            var o = ops[i];
-            if (!(o.ticker in numStocks)) { numStocks[o.ticker] = 0; avgPrice[o.ticker] = 0; }
+    // Expand
+    var currentDay = new Date(ops[0].date);
+    var history = [{date: new Date(currentDay), ops: []}];
+    const lastDay = new Date();
 
-            if (o.sell) {
-                numStocks[o.ticker] -= o.numStocks;
-                o.ownedStocks = numStocks[o.ticker];
-                o.profit = (o.unitPrice -  avgPrice[o.ticker]) * o.numStocks;
+    var opi = 0;
+    while (!sameDay(currentDay, lastDay)) {
+        while (opi < ops.length && sameDay(currentDay, ops[opi].date)) {
+            arrLast(history).ops.push(ops[opi]);
+            opi++;
+        }
+        currentDay.setDate(currentDay.getDate() + 1);
+        history.push({date: new Date(currentDay), ops: []});
+    }
+
+    var wallet = {};
+    history.forEach((x) => {
+        if (x.ops.length == 0) {
+            x.wallet = wallet;
+            return;
+        }
+        wallet = structuredClone(wallet);
+        x.ops.forEach((op) => {
+            if (!(op.ticker in wallet)) { wallet[op.ticker] = { ownedStocks : 0, avgPrice : 0.0, profit : 0.0, sold : 0.0 }; }
+
+            wt = wallet[op.ticker];
+            if (op.sell) {
+                wt.sold += op.numStocks * op.unitPrice;
+                wt.profit += op.numStocks*(op.unitPrice - wt.avgPrice);
+                wt.ownedStocks -= op.numStocks;
+                if (wt.ownedStocks == 0) {
+                    wt.avgPrice = 0.0;
+                }
             } else {
-                var prevMktValue = avgPrice[o.ticker] * numStocks[o.ticker];
-
-                numStocks[o.ticker] += o.numStocks;
-                o.ownedStocks = numStocks[o.ticker];
-
-                var newMktValue = prevMktValue + o.numStocks * o.unitPrice;
-
-                avgPrice[o.ticker] = newMktValue / o.ownedStocks;
+                wt.avgPrice = (wt.ownedStocks * wt.avgPrice + op.numStocks * op.unitPrice)/(wt.ownedStocks + op.numStocks);
+                wt.ownedStocks += op.numStocks;
             }
+        });
+        x.wallet = wallet;
+    });
 
-            o.avgPrice = avgPrice[o.ticker];
+
+    var ym_hist = {};
+    history.forEach((x) => {
+        var y = x.date.getFullYear();
+        var m = x.date.getMonth();
+        if (!(y in ym_hist)) { ym_hist[y] = {}; }
+        if (!(m in ym_hist[y])) {
+            ym_hist[y][m] = {
+                summary: { taxOnGain : 0, lossDeducedTaxOnGain : 0 },
+                days: []
+            };
         }
+        ym_hist[y][m].days.push(x);
+    });
 
-        // Separate in operations per month
-        var opsPerMonth = [];
-        var lastDate = new Date;
-        for (let i = 0; i < ops.length; i++) {
-            var m = getMonth(ops[i].date);
-            if (differentMonth(m, lastDate)) {
-                opsPerMonth.push({'date': m, 'ops' : []});
-            }
-            lastDate = m;
-            opsPerMonth[opsPerMonth.length-1].ops.push(ops[i]);
-        }
+    var accProfit = 0;
+    for (const [y, m2mdata] of Object.entries(ym_hist)) {
+        for (let [m, mdata] of Object.entries(m2mdata)) {
+            var sold = 0.0;
+            var profit = 0.0;
+            for (const [ticker, tdata] of Object.entries(mdata.days[0].wallet)) { sold -= tdata.sold; profit -= tdata.profit;};
+            for (const [ticker, tdata] of Object.entries(arrLast(mdata.days).wallet)) { sold += tdata.sold; profit += tdata.profit; };
 
-        // Calculate sold amount
-        var accProfit = 0;
-        for (let m = 0; m < opsPerMonth.length; m++) {
-            var mops = opsPerMonth[m].ops;
-            var sold = 0;
-            var profit = 0;
-            for (let i = 0; i < mops.length; i++) {
-                var o = mops[i];
-                if (o.sell) {
-                    sold += o.unitPrice * o.numStocks;
-                    profit += o.profit;
-                }
+            mdata.summary.sold = sold;
+            if (sold >= 20000 && profit > 0) {
+                mdata.summary.taxOnGain = 0.15*sold;
             }
+            mdata.summary.profit = profit;
             accProfit += profit;
-            opsPerMonth[m].sold = sold;
-            opsPerMonth[m].profit = profit;
-
-            var taxOnGain = profit > 0 && sold > 20000 ? 0.15*profit : 0;
-            opsPerMonth[m].taxOnGain = taxOnGain;
-            
-            // If made a bit of profit, but I'm on overall losses, deduce the taxes
-            //     I would have to pay from overall losses
-            if (taxOnGain > 0 && accProfit < 0) {
-                var losses = -accProfit;
-                if (losses >= taxOnGain) {
-                    losses -= taxOnGain;
-                    taxOnGain = 0;
-                } else {
-                    taxOnGain -= losses;
-                    losses = 0;
-                }
-                accProfit = -losses;
-            }
-
-            opsPerMonth[m].lossDeducedTaxOnGain = taxOnGain;
-            opsPerMonth[m].accProfit = accProfit;
-        }
-        return opsPerMonth;
-}
-
-function calculateWallet() {
-    var lastOps = {};
-    for (let m = 0; m < s_opsPerMonth.length; m++) {
-        var mops = s_opsPerMonth[m].ops;
-        for (let i = 0; i < mops.length; i++) {
-            lastOps[mops[i].ticker] = mops[i];
-        }            
-    }
-
-    var wallet = [];
-    for (const [ticker, lastOp] of Object.entries(lastOps)) {
-        if (lastOp.ownedStocks > 0) {
-            wallet.push({ 'ticker' : ticker, 'ownedStocks' : lastOp.ownedStocks, 'avgPrice' : lastOp.avgPrice });
+            mdata.summary.accProfit = accProfit;
         }
     }
 
-    wallet.sort(function(a,b) { return a.ticker < b.ticker ? -1 : 1; });
-
-    return wallet;
+    return ym_hist;
 }
 
 function readFile(file) {
@@ -381,133 +393,94 @@ function readFile(file) {
 }
 
 function originalOpsUpdated() {
-    s_opsPerMonth = processOps(s_originalOps);
-    s_wallet = calculateWallet();
+    s_ymhist = processOps(s_originalOps);
     updateTable();
     updateWalletTable();
 }
 
-async function getStockPrices(stock) {
-    if (stock in s_stockPrices) { delete s_requestedStocks[stock]; return; }
-
-    const cors_url = "https://cors-anywhere.herokuapp.com/";
-    const yahoo_url = "https://query1.finance.yahoo.com/v8/finance/chart/"
-    const config = "?metrics=low&interval=1d&range=5y&events=div";
-
-    var stockSym = stock + ".SA";
-    if (stock == "TIMP3") { stockSym = "TIMS3.SA"; }
-
-    let url = cors_url + yahoo_url + stockSym + config;
-    const response = await fetch(url);
-
-    if (response.status != 200) {
-        console.log("Failed to get information for: " + stock);
-        delete s_requestedStocks[stock];
-        return;
-    }
-
-    const json = await response.json();
-    const timestamps = json.chart.result[0].timestamp;
-    const closingValues = json.chart.result[0].indicators.quote[0].close;
-
-    var dividends = null;
-    if ("events" in json.chart.result[0]) {
-        dividends = json.chart.result[0].events.dividends;
-    }
-
-    var prices = [];
-    for (let i = 0; i < timestamps.length; i++) {
-        prices.push([new Date(timestamps[i]*1000), closingValues[i], timestamps[i]]);
-    }
-
-    console.log("Got price data for: " + stock);
-    s_stockPrices[stock] = { "prices" : prices, "dividends" : dividends };
-
-    delete s_requestedStocks[stock];
-
-    if (Object.keys(s_requestedStocks).length == 0) {
-        localStorage.setItem('stock_prices', JSON.stringify(s_stockPrices));
-        updateWalletHistory();
-    }
-}
-
-function getOpAtDate(ticker, date) {
-    var lastOp = null;
-    for (let m = 0; m < s_opsPerMonth.length; m++) {
-        var mops = s_opsPerMonth[m].ops;
-        for (let i = 0; i < mops.length; i++) {
-            var op = mops[i];
-            if (date < op.date) { return lastOp; }
-            if (ticker == op.ticker) { lastOp = [m, i]; }
-        }
-    }
-    return lastOp;
-}
-
 function updateWalletHistory () {
-    var wh = [];
-    
-    for (const [ticker, data] of Object.entries(s_stockPrices)) {
-        var prices = data.prices;
-        if (prices.length >= 1240) { // hack! I can't get the full history from some stocks. Ignore them completely.
-            wh = prices.map(function (val) { return {date: val[0], profit: 0, dividends: 0, invested: 0, valid: false}; });
-            break;
+    var dividendTable = {};
+    var stockPriceTable = {};
+    for (const [ticker, tickerData] of Object.entries(s_stockPrices)) {
+        var tdivs = {};
+        if (tickerData.dividends) {
+            for (const [time, v] of Object.entries(tickerData.dividends)) {
+                var d = new Date(time*1000);
+                var dd = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+                tdivs[dd.getTime()] = v.amount;
+            }
+        }
+        dividendTable[ticker] = tdivs;
+
+        stockPriceTable[ticker] = {};
+        tickerData.prices.forEach((price) => {
+            var d = new Date(price[2]*1000);
+            var dd = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+            stockPriceTable[ticker][dd.getTime()] = price[1];
+        });
+    }
+
+
+    var dividends = []
+    var accDivs = {};
+    for (let [y, m2mdata] of Object.entries(s_ymhist)) {
+        for (let [m, mdata] of Object.entries(m2mdata)) {
+            mdata.days.forEach((x) => {
+                x.acc_dividends = {};
+                for (const [ticker, tstate] of Object.entries(x.wallet)) {
+
+                    if (!(ticker in accDivs)) { accDivs[ticker] = 0; }
+
+                    if (tstate.ownedStocks != 0 && x.date.getTime() in dividendTable[ticker]) {
+                        var amt = dividendTable[ticker][x.date.getTime()];
+                        divs = amt * tstate.ownedStocks;
+                        dividends.push([x.date, ticker, amt, tstate.ownedStocks, divs]);
+                        accDivs[ticker] += divs;
+                    }
+                    x.acc_dividends[ticker] = accDivs[ticker];
+                }
+            });
         }
     }
-    console.log(wh)
+    updateDividendsTable(dividends);
 
-    if (wh.length == 0) {
-        console.log("Failed to find reference of dates");
-        updateWalletTable();
-        return;
-    }
+    var wh = []
+    for (const [y, m2mdata] of Object.entries(s_ymhist)) {
+        for (let [m, mdata] of Object.entries(m2mdata)) {
+            mdata.days.forEach((x) => {
+                var invested = 0.0;
+                var profit = 0.0;
+                var vld = false;
+                missing_tickers = [];
 
-    console.log("Rebuilding wallet");
+                for (const [ticker, tstate] of Object.entries(x.wallet)) {
+                    var i =  tstate.ownedStocks * tstate.avgPrice - tstate.profit - x.acc_dividends[ticker];
+                    invested += i;
 
-    var dividends = [];
-
-    for (const [ticker, data] of Object.entries(s_stockPrices)) {
-        var prices = data.prices;
-        var accDiv = 0;
-        for (let tp_idx = 0; tp_idx < prices.length; tp_idx++) {
-            var d = prices[tp_idx][0];
-
-            whdi = wh.findIndex( function(v) { return sameDay(d, v.date); } );
-            if (whdi == -1) {
-                console.log("Failed to find day");
-                continue;
-            }
-            whd = wh[whdi];
-            whd.valid = true;
-   
-            const mi = getOpAtDate(ticker, d);
-            if (mi != null) {
-                const op = s_opsPerMonth[mi[0]].ops[mi[1]];
-
-                if (data.dividends && op.ownedStocks != 0 && prices[tp_idx][2] in data.dividends) {
-                    var amt = data.dividends[prices[tp_idx][2]].amount;
-                    var val = amt * op.ownedStocks;
-                    dividends.push([d, ticker, amt, op.ownedStocks, val]);
-                    accDiv += val;
+                    if (x.date.getTime() in stockPriceTable[ticker]) {
+                        var price = stockPriceTable[ticker][x.date.getTime()]
+                        profit += tstate.ownedStocks * price - i;
+                        vld = true;
+                    } else {
+                        missing_tickers.push(ticker);
+                    }
                 }
 
-                whd.invested += op.avgPrice*op.ownedStocks - accDiv;
-                whd.profit += prices[tp_idx][1]*op.ownedStocks - (op.avgPrice*op.ownedStocks - accDiv);
-                whd.dividends += accDiv;
-            }
+                if (vld && missing_tickers.length > 0) {
+                    console.warn("Missing tickers: " + missing_tickers);
+                }
+                
+                wh.push({ date: x.date, valid : vld, invested : invested, profit : profit, dividends: 0.0 });
+            });
         }
     }
 
     wh = wh.filter(function(v) { return v.valid; });
 
-    var idx = wh.findIndex( function(v) { return v.invested != 0; } );
-    wh = wh.slice(idx);
-
     s_wh = wh;
     s_first = 0;
     s_last = s_wh.length;
 
-    updateDividendsTable(dividends);
     updateWalletTable();
     updateCharts();
 }
@@ -756,8 +729,69 @@ if ('original_ops' in localStorage) {
 
 if ('stock_prices' in localStorage) {
     s_stockPrices = JSON.parse(localStorage['stock_prices'], json_deserialize_helper);
-    console.log(s_stockPrices);
+    updateWalletTable();
     updateWalletHistory();
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+async function getStockPrices(stock) {
+    if (stock in s_stockPrices) { delete s_requestedStocks[stock]; return; }
+
+    const cors_url = "https://cors-anywhere.herokuapp.com/";
+    const yahoo_url = "https://query1.finance.yahoo.com/v8/finance/chart/"
+    const config = "?metrics=low&interval=1d&range=5y&events=div";
+
+    var stockSym = stock + ".SA";
+    if (stock == "TIMP3") { stockSym = "TIMS3.SA"; }
+
+    let url = cors_url + yahoo_url + stockSym + config;
+    const response = await fetch(url);
+
+    if (response.status != 200) {
+        console.warn("Failed to get information for: " + stock);
+        delete s_requestedStocks[stock];
+        return;
+    }
+
+    const json = await response.json();
+    const timestamps = json.chart.result[0].timestamp;
+    const closingValues = json.chart.result[0].indicators.quote[0].close;
+
+    var dividends = null;
+    if ("events" in json.chart.result[0]) {
+        dividends = json.chart.result[0].events.dividends;
+    }
+
+    var prices = [];
+    for (let i = 0; i < timestamps.length; i++) {
+        prices.push([new Date(timestamps[i]*1000), closingValues[i], timestamps[i]]);
+    }
+
+    console.log("Got price data for: " + stock);
+    s_stockPrices[stock] = { "prices" : prices, "dividends" : dividends };
+
+    delete s_requestedStocks[stock];
+
+    if (Object.keys(s_requestedStocks).length == 0) {
+        localStorage.setItem('stock_prices', JSON.stringify(s_stockPrices));
+        updateWalletHistory();
+    }
+}
 </script>
