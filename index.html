@@ -230,12 +230,9 @@ function updateWalletTable() {
 
     var sorted_wallet = [];
     for (let [ticker, s] of Object.entries(day.wallet)) {
-        if (s.ownedStocks == 0) {
-            continue;
-        }
         sorted_wallet.push([ticker, s]);
     }
-    sorted_wallet = sorted_wallet.sort((a,b) => { return (a[1].ownedStocks*a[1].avgPrice - a[1].profit) - (b[1].ownedStocks*b[1].avgPrice - b[1].profit); });
+    sorted_wallet = sorted_wallet.sort((a,b) => { return (a[1].bought - a[1].sold) - (b[1].bought - b[1].sold); });
 
     for (let i = 0; i < sorted_wallet.length; i++) {
         const [ticker, s] = sorted_wallet[i];
@@ -250,9 +247,9 @@ function updateWalletTable() {
         var mktPrice = (ticker in s_stockPrices) ? arrLast(s_stockPrices[ticker].prices)[1] : 0;
         totalMktPrice += mktPrice * s.ownedStocks;
 
-        var invested = s.ownedStocks * s.avgPrice;
+        var invested = s.bought - s.sold;
         if (mktPrice != 0) {
-            invested -= ("acc_dividends" in day ? day.acc_dividends[ticker] : 0) + s.profit;
+            invested -= ("acc_dividends" in day ? day.acc_dividends[ticker] : 0);
         }
         totalInvested += invested;
 
@@ -332,7 +329,7 @@ function processOps(ops) {
         }
         wallet = structuredClone(wallet);
         x.ops.forEach((op) => {
-            if (!(op.ticker in wallet)) { wallet[op.ticker] = { ownedStocks : 0, avgPrice : 0.0, profit : 0.0, sold : 0.0 }; }
+            if (!(op.ticker in wallet)) { wallet[op.ticker] = { ownedStocks : 0, avgPrice : 0.0, profit : 0.0, bought: 0.0, sold : 0.0 }; }
 
             wt = wallet[op.ticker];
             if (op.sell) {
@@ -343,6 +340,7 @@ function processOps(ops) {
                     wt.avgPrice = 0.0;
                 }
             } else {
+                wt.bought += op.numStocks * op.unitPrice;
                 wt.avgPrice = (wt.ownedStocks * wt.avgPrice + op.numStocks * op.unitPrice)/(wt.ownedStocks + op.numStocks);
                 wt.ownedStocks += op.numStocks;
             }
@@ -461,7 +459,7 @@ function updateWalletHistory () {
                 missing_tickers = [];
 
                 for (const [ticker, tstate] of Object.entries(x.wallet)) {
-                    var i =  tstate.ownedStocks * tstate.avgPrice - tstate.profit - x.acc_dividends[ticker];
+                    var i =  tstate.bought - tstate.sold - x.acc_dividends[ticker];
                     invested += i;
 
                     if (x.date.getTime() in stockPriceTable[ticker]) {
