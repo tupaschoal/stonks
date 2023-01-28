@@ -219,6 +219,10 @@ function updateWalletTable() {
         }
     }
 
+    if (!day) {
+        return;
+    }
+
     var totalProfit = 0
     var totalAcquirePrice = 0;
     var totalMktPrice = 0
@@ -303,6 +307,9 @@ function processOps(ops) {
     });
 
     // Expand
+    if (ops.length == 0) {
+        return {};
+    }
     var currentDay = new Date(ops[0].date);
     var history = [{date: new Date(currentDay), ops: []}];
     const lastDay = new Date();
@@ -545,6 +552,10 @@ function updateCharts() {
     if (s_first < 0) { s_first = 0; }
     if (s_last >= s_wh.length) s_last = s_wh.length;
 
+    if (s_wh.length == 0) {
+        return;
+    }
+
     var adjust = document.getElementById("adjust_rent").checked;
 
     var v1z = 0;
@@ -684,21 +695,28 @@ var s_requestedStocks = {};
 function calculateProfit() {
     s_requestedStocks = {};
     s_stockPrices = {};
-    for (let m = 0; m < s_opsPerMonth.length; m++) {
-        var mops = s_opsPerMonth[m].ops;
-        for (let i = 0; i < mops.length; i++) {
-            var ticker = mops[i].ticker;
-            if (!(ticker in s_requestedStocks)) {
-                s_requestedStocks[ticker] = 1;
-                getStockPrices(ticker);
-            }
+    for (const [y, m2mdata] of Object.entries(s_ymhist)) {
+        for (let [m, mdata] of Object.entries(m2mdata)) {
+            mdata.days.forEach((d) => {
+                d.ops.forEach((op) => {
+                    var ticker = op.ticker;
+                    if (!(ticker in s_requestedStocks)) {
+                        s_requestedStocks[ticker] = 1;
+                        getStockPrices(ticker);
+                    }
+                });
+            });
         }
     }
 }
 
 function clearData() {
-    s_originalOps = [];
+    s_originalOps = []
+    localStorage.setItem('original_ops', JSON.stringify(s_originalOps));;
+
     s_stockPrices = [];
+    localStorage.setItem('stock_prices', JSON.stringify(s_stockPrices));
+
     originalOpsUpdated();
     updateWalletHistory();
 }
@@ -713,41 +731,6 @@ function json_deserialize_helper(key,value) {
   }
   return value;
 }
-
-document.getElementById('inputfile')
-    .addEventListener('change', function() {
-        for (let i = 0; i < this.files.length; i++) {
-            readFile(this.files[i]);
-        }
-    })
-
-
-if ('original_ops' in localStorage) {
-    s_originalOps = JSON.parse(localStorage['original_ops']);
-    originalOpsUpdated();
-}
-
-if ('stock_prices' in localStorage) {
-    s_stockPrices = JSON.parse(localStorage['stock_prices'], json_deserialize_helper);
-    updateWalletTable();
-    updateWalletHistory();
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -793,5 +776,24 @@ async function getStockPrices(stock) {
         localStorage.setItem('stock_prices', JSON.stringify(s_stockPrices));
         updateWalletHistory();
     }
+}
+
+document.getElementById('inputfile')
+    .addEventListener('change', function() {
+        for (let i = 0; i < this.files.length; i++) {
+            readFile(this.files[i]);
+        }
+    })
+
+
+if ('original_ops' in localStorage) {
+    s_originalOps = JSON.parse(localStorage['original_ops']);
+    originalOpsUpdated();
+}
+
+if ('stock_prices' in localStorage) {
+    s_stockPrices = JSON.parse(localStorage['stock_prices'], json_deserialize_helper);
+    updateWalletTable();
+    updateWalletHistory();
 }
 </script>
