@@ -113,6 +113,16 @@ Agora que voce fez isso, clique aqui para calcular a rentabilidade:
 <input type="button" value="5y" onclick="viewMonth(5*12);"/>
 
 <br>
+<input type="button" value="2017" onclick="viewTheYear(2017);"/>
+<input type="button" value="2018" onclick="viewTheYear(2018);"/>
+<input type="button" value="2019" onclick="viewTheYear(2019);"/>
+<input type="button" value="2020" onclick="viewTheYear(2020);"/>
+<input type="button" value="2021" onclick="viewTheYear(2021);"/>
+<input type="button" value="2022" onclick="viewTheYear(2022);"/>
+<input type="button" value="2023" onclick="viewTheYear(2023);"/>
+
+
+<br>
 <input id="ZoomIn" type="button" value="+" onclick="zoomIn();"/>
 <input id="ZoomOut" type="button" value="-" onclick="zoomOut();"/>
 <input id="panLeft" type="button" value="<=" onclick="panLeft();"/>
@@ -534,6 +544,12 @@ function viewMonth(n) {
     const now = new Date();
     const pastDate = new Date(now.getFullYear(), now.getMonth()-n, now.getDate());
     viewFromDate(pastDate);
+}
+
+function viewTheYear(y) {
+    s_first = s_wh.findIndex((w)=>{ return w.date.getFullYear() == y; });
+    s_last = s_wh.findLastIndex((w)=>{ return w.date.getFullYear() == y; }) + 1;
+    updateCharts();
 }
 
 function viewFromDate(pastDate) {
