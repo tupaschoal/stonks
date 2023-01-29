@@ -8,6 +8,14 @@
 table, td {
   border: 1px solid black;
 }
+
+.fixed {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background-color: gray;
+}
 </style>
 
 <head>
@@ -16,7 +24,7 @@ table, td {
 </head>
 
 <body>
-
+<br>
 <h1>Stonks</h1>
 
 Use os dados de movimentações extraídos da B3 para calcular os impostos a pagar em todos os meses.
@@ -86,6 +94,8 @@ Agora que voce fez isso, clique aqui para calcular a rentabilidade:
 
 <br><br>
 
+
+<div class='fixed'>
 <input type="button" value="1w" onclick="viewWeek(1);"/>
 <input type="button" value="2w" onclick="viewWeek(2);"/>
 <input type="button" value="1m" onclick="viewMonth(1);"/>
@@ -97,7 +107,6 @@ Agora que voce fez isso, clique aqui para calcular a rentabilidade:
 <input type="button" value="4y" onclick="viewMonth(4*12);"/>
 <input type="button" value="5y" onclick="viewMonth(5*12);"/>
 
-<br>
 <input type="button" value="2017" onclick="viewTheYear(2017);"/>
 <input type="button" value="2018" onclick="viewTheYear(2018);"/>
 <input type="button" value="2019" onclick="viewTheYear(2019);"/>
@@ -106,18 +115,18 @@ Agora que voce fez isso, clique aqui para calcular a rentabilidade:
 <input type="button" value="2022" onclick="viewTheYear(2022);"/>
 <input type="button" value="2023" onclick="viewTheYear(2023);"/>
 
-
-<br>
 <input id="ZoomIn" type="button" value="+" onclick="zoomIn();"/>
 <input id="ZoomOut" type="button" value="-" onclick="zoomOut();"/>
 <input id="panLeft" type="button" value="<=" onclick="panLeft();"/>
 <input id="panRight" type="button" value="=>" onclick="panRight();"/>
-<br>
+
 <input id="Reset" type="button" value="Reset view" onclick="resetView();"/>
-<br>
+
 <input type="checkbox" id="adjust_rent" name="adjust_rent" value="adjust_rent" checked>
 <label for="vehicle1">Usar visão como ponto zero de rentabilidade</label>
-<br>
+
+</div>
+
 
 <h2>Gráfico de rentabilidade ao longo do tempo</h2>
 <canvas id="graficoRentabilidade" style="width:100%;max-width:1800px"></canvas>
