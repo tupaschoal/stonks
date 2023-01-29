@@ -605,15 +605,15 @@ function updateCharts() {
     var xValues = wh.map(function(v) { return v.date; });
 
     var yValuesLP = wh.map(function(v) { return v.profit; });
-    makeChart("graficoLucroPrejuizo", xValues,
+    makeChart("graficoLucroPrejuizo", xValues, asCurrency,
         ["Lucro/Prejuízo (R$)", yValuesLP],
         ["Dividendos (R$)", wh.map((v) => { return v.dividends; })]
     );
 
-    var yValuesR = wh.map(function(v) { return 100.0*v.profit/v.invested; });
-    var yValuesROverAvg = wh.map(function(v,i) { return 100.0*v.profit/invested_avg[i]; });
+    var yValuesR = wh.map(function(v) { return v.profit/v.invested; });
+    var yValuesROverAvg = wh.map(function(v,i) { return v.profit/invested_avg[i]; });
 
-    makeChart("graficoRentabilidade", xValues,
+    makeChart("graficoRentabilidade", xValues, asPercentage,
         ["Rentabilidade (%)", yValuesR],
         ["Rentabilidade na média de investimento (%)", yValuesROverAvg]
     );
@@ -621,13 +621,13 @@ function updateCharts() {
     var yValuesAvgInvested = invested_avg;
     var yValuesDividends = wh.map(function(v) { return v.invested; });
 
-    makeChart("graficoInvestido", xValues,
+    makeChart("graficoInvestido", xValues, asCurrency,
         ["Valor Investido - Dividendos (R$)", yValuesDividends],
         ["Valor Investido - média (R$)", yValuesAvgInvested]
     );
 }
 
-function makeChart(name, x, y1, y2) {
+function makeChart(name, x, yformat, y1, y2) {
     x = x.map((d) => { return d.toLocaleDateString(); });
     var datasets = [{
           label: y1[0],
@@ -651,7 +651,7 @@ function makeChart(name, x, y1, y2) {
         });
     }
 
-    const opts = {
+    var opts = {
       animation: { duration : 0 },
       scales: {
         xAxes: {
@@ -674,6 +674,21 @@ function makeChart(name, x, y1, y2) {
         },
       },
     };
+
+    if (yformat) {
+        opts.scales.yAxes = [{
+            ticks: {
+                callback: function(value, index, values) {
+                     return yformat(value);
+                }
+            }
+        }];
+        opts.tooltips = {
+            callbacks: {
+                label: function (t,d) { return yformat(t.yLabel); }
+            }
+        };
+    }
  
     new Chart(name, {
       type: "line",
