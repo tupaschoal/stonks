@@ -467,10 +467,13 @@ function updateWalletHistory () {
                 var invested = 0.0;
                 var profit = 0.0;
                 var vld = false;
+                var acc_divs = 0;
                 missing_tickers = [];
 
                 for (const [ticker, tstate] of Object.entries(x.wallet)) {
-                    var i =  tstate.bought - tstate.sold - x.acc_dividends[ticker];
+                    var tdivs = x.acc_dividends[ticker];
+                    acc_divs += tdivs;
+                    var i =  tstate.bought - tstate.sold - tdivs;
                     invested += i;
 
                     if (x.date.getTime() in stockPriceTable[ticker]) {
@@ -486,7 +489,7 @@ function updateWalletHistory () {
                     console.warn("Missing tickers: " + missing_tickers);
                 }
                 
-                wh.push({ date: x.date, valid : vld, invested : invested, profit : profit, dividends: 0.0 });
+                wh.push({ date: x.date, valid : vld, invested : invested, profit : profit, dividends: acc_divs });
             });
         }
     }
@@ -581,8 +584,9 @@ function updateCharts() {
     if (adjust) {
         wh = s_wh.slice(s_first, s_last);
         profitz = wh[0].profit;
-        console.log("Rebasing. profit: " + profitz);
-        wh = wh.map(function(v) { return {date: v.date, profit: v.profit-profitz, dividends: v.dividends, invested: v.invested}; });
+        divz = wh[0].dividends;
+        console.log("Rebasing. profit: " + profitz + " dividends: " + divz);
+        wh = wh.map(function(v) { return {date: v.date, profit: v.profit-profitz, dividends: v.dividends - divz, invested: v.invested}; });
 
         invested_acc = 0
         invested_i = 0;
@@ -602,7 +606,8 @@ function updateCharts() {
 
     var yValuesLP = wh.map(function(v) { return v.profit; });
     makeChart("graficoLucroPrejuizo", xValues,
-        ["Lucro/Prejuízo (R$)", yValuesLP]
+        ["Lucro/Prejuízo (R$)", yValuesLP],
+        ["Dividendos (R$)", wh.map((v) => { return v.dividends; })]
     );
 
     var yValuesR = wh.map(function(v) { return 100.0*v.profit/v.invested; });
