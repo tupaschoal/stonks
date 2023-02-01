@@ -447,7 +447,9 @@ function updateWalletHistory () {
         tickerData.prices.forEach((price) => {
             var d = new Date(price[2]*1000);
             var dd = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-            stockPriceTable[ticker][dd.getTime()] = price[1];
+            if (price[1]) {
+                stockPriceTable[ticker][dd.getTime()] = price[1];
+            }
         });
     }
 
@@ -502,6 +504,10 @@ function updateWalletHistory () {
 
                 if (vld && missing_tickers.length > 0) {
                     console.warn("Missing tickers: " + missing_tickers);
+                    if (missing_tickers.length > 2) {
+                        console.warn("Skipping day: " + x.date);
+                        vld = false;
+                    }
                 }
                 
                 wh.push({ date: x.date, valid : vld, invested : invested, profit : profit, dividends: acc_divs });
