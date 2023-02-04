@@ -82,6 +82,8 @@ Agora que voce fez isso, clique aqui para calcular a rentabilidade:
     <td>Quantidade</td>
     <td>Preço médio</td>
     <td>Valor de aquisição</td>
+    <td>Lucro por venda</td>
+    <td>Lucro por dividendos</td>
     <td>Valor investido</td>
     <td>Preço de mercado</td>
     <td>Valor de mercado</td>
@@ -253,6 +255,8 @@ function updateWalletTable() {
     var totalAcquirePrice = 0;
     var totalMktPrice = 0
     var totalInvested = 0;
+    var totalSalesProfit = 0;
+    var totalDividends = 0;
 
     var sorted_wallet = [];
     for (let [ticker, s] of Object.entries(day.wallet)) {
@@ -264,25 +268,31 @@ function updateWalletTable() {
         const [ticker, s] = sorted_wallet[i];
         var r = table.insertRow(-1);
         r.insertCell(-1).innerHTML = ticker;
-        r.insertCell(-1).innerHTML = s.ownedStocks;
-        r.insertCell(-1).innerHTML = asCurrency(s.avgPrice);
-        r.insertCell(-1).innerHTML = asCurrency(s.ownedStocks * s.avgPrice);
+        r.insertCell(-1).innerHTML = s.ownedStocks > 0 ? s.ownedStocks : "-";
+        r.insertCell(-1).innerHTML = s.avgPrice > 0 ? asCurrency(s.avgPrice) : "-";
 
-        totalAcquirePrice += s.ownedStocks * s.avgPrice;
+        var acquirePrice = s.ownedStocks * s.avgPrice;
+        totalAcquirePrice += acquirePrice;
+        r.insertCell(-1).innerHTML = acquirePrice > 0 ? asCurrency(acquirePrice) : "-";
+
+        var salesProfit = s.sold - s.bought + acquirePrice;
+        totalSalesProfit += salesProfit;
+        r.insertCell(-1).innerHTML = salesProfit > 0.001 ? asCurrency(salesProfit) : "-";
+
+        var divs = "acc_dividends" in day ? day.acc_dividends[ticker] : 0;
+        totalDividends += divs;
+        r.insertCell(-1).innerHTML = divs > 0 ? asCurrency(divs) : "-";
+
+        var invested = acquirePrice - salesProfit - divs;
+        totalInvested += invested;
+        r.insertCell(-1).innerHTML = mktPrice != 0 ? asCurrency(invested) : "-";
 
         var mktPrice = (ticker in s_stockPrices) ? arrLast(s_stockPrices[ticker].prices)[1] : 0;
         totalMktPrice += mktPrice * s.ownedStocks;
-
-        var invested = s.bought - s.sold;
-        if (mktPrice != 0) {
-            invested -= ("acc_dividends" in day ? day.acc_dividends[ticker] : 0);
-        }
-        totalInvested += invested;
-
-        r.insertCell(-1).innerHTML = mktPrice != 0 ? asCurrency(invested) : "-";
         r.insertCell(-1).innerHTML = mktPrice != 0 ? asCurrency(mktPrice) : "-";
-        r.insertCell(-1).innerHTML = mktPrice != 0 ? asCurrency(s.ownedStocks * (mktPrice)) : "-";
-        r.insertCell(-1).innerHTML = mktPrice != 0 ? asPercentage((s.ownedStocks*mktPrice - invested)/(invested)) : "-";
+
+        r.insertCell(-1).innerHTML = mktPrice != 0 && s.ownedStocks > 0 ? asCurrency(s.ownedStocks * (mktPrice)) : "-";
+        r.insertCell(-1).innerHTML = mktPrice != 0 && s.ownedStocks > 0 && invested > 0 ? asPercentage((s.ownedStocks*mktPrice - invested)/(invested)) : "-";
         r.insertCell(-1).innerHTML = mktPrice != 0 ? asCurrency(s.ownedStocks*mktPrice - invested) : "-";
         totalProfit += mktPrice != 0 ? (s.ownedStocks*mktPrice - invested) : 0;
     }
@@ -292,7 +302,12 @@ function updateWalletTable() {
     r.insertCell(-1).innerHTML = "";
     r.insertCell(-1).innerHTML = "";
     r.insertCell(-1).innerHTML = asCurrency(totalAcquirePrice);
+
+    r.insertCell(-1).innerHTML = asCurrency(totalSalesProfit);
+    r.insertCell(-1).innerHTML = asCurrency(totalDividends);
+
     r.insertCell(-1).innerHTML = totalProfit != 0 ? asCurrency(totalInvested) : "-";
+
     r.insertCell(-1).innerHTML = "";
     r.insertCell(-1).innerHTML = totalProfit != 0 ? asCurrency(totalMktPrice) : "-";
     r.insertCell(-1).innerHTML = totalProfit != 0 ? asPercentage(totalMktPrice / totalInvested - 1) : "-";
