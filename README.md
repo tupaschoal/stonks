@@ -74,7 +74,7 @@ Então, se o seu titulo rende IPCA+5%, e a inflação no ano foi de 3%, você te
 Note ainda que quanto maior a inflação no periodo, menor a rentabilidade. Por exemplo, para um cenário de IPCA=10%, a rentabilidade bruta seria 10+5=15%. A rentabilidade liquida seria 12,75% e a rentabilidade real ficaria em 2,5%.
 E pela mesma logica, quando o IPCA é zero, sua rentabilidade é maximizada: 4,25%
 
-## Outras carácteristicas
+## Outras características
 - Frequencia de pagamento de juros
   - Dita com que frequencia o tomador da divida deve pagar os juros. Valores tipicos são: semestralmente ou "no vencimento".
 - Frequencia de possibilidade de amortização
