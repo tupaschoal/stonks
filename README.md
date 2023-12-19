@@ -38,7 +38,7 @@ O CDI é uma taxa usada por bancos para emprestarem dinheiro uns aos outros por 
 Historicamente a taxa de juros basica do país tende a ser maior que o IPCA em 2% a 4%. Então quando for comparar, é razoavel pensar que CDI é maior que o IPCA.
 
 Quando o CDI fica muito próximo ou abaixo do IPCA, a economia fica hiper estimulada, o que pode elevar a inflação. Por isso, o Banco Central tende a controlar essa taxa acima da inflação.
-[Veja a relação da SELIC e IPCA ao longo dos anos](clubedospoupadores.com/selic/ipca)
+[Veja a relação da SELIC e IPCA ao longo dos anos](https://clubedospoupadores.com/selic/ipca)
 
 ### Relação de prefixado e ipca+
 Um titulo prefixado de 10% será equivalente a um titulo de IPCA+7% quando a inflação estiver em 3%. Pelo mesmo raciocinio, ele sera equivalente a um titulo IPCA+1% quando a inflação for 9%. Dessa forma, titulos prefixados valem mais quando a inflação é menor, e podem render menos, ou até serem negativos quando inflação se torna alta.
