@@ -145,8 +145,8 @@ function parseDate(date) {
     // Expect DD/MM/YYYY
     var parts = date.split("/")
 
-    var d = parseInt(parts[1])
-    var m = parseInt(parts[0])
+    var d = parseInt(parts[0])
+    var m = parseInt(parts[1])
     var y = parseInt(parts[2])
     if (y < 50) {
         y += 2000;
