@@ -141,12 +141,38 @@ function parseCurrency(value) {
 
 function arrLast(arr) { return arr[arr.length - 1]; }
 
-function parseDate(date) {
-    // Expect DD/MM/YYYY
-    var parts = date.split("/")
+/**
+ * Makes sure to parse a valid int between 1 and range
+ *
+ * @param {int} number_string Number to be parsed as int
+ * @param {int} range Maximum value of integer to be parsed
+ * @return {int} parsed integer
+ */
+function parseIntRanged(number_string, range) {
+    var number = parseInt(number_string)
+    if (number === null || number === 0 || number > range)
+    {
+        throw `Número inesperado: "${number}". Deveria ser entre 1 e ${range}`
+    }
+    return number
+}
 
-    var d = parseInt(parts[0])
-    var m = parseInt(parts[1])
+/**
+ * Returns a Javascript Date object given a string on either DD/MM/YYYY or DD/MM/YY
+ *
+ * @param {object} spreadsheet_row_object The spreadsheet row that contains the date
+ * @return {Date} date as a JS object
+ */
+function parseDate(sheet_row) {
+    date = sheet_row['Data']
+    var parts = date.split("/")
+    if (parts.length != 3)
+    {
+        throw `Linha ${sheet_row.__rowNum__+1} - Data inesperada: "${date}". Deveria ser DD/MM/YYYY`
+    }
+
+    var d = parseIntRanged(parts[0], 31) // Assume all months have 31 days
+    var m = parseIntRanged(parts[1], 12)
     var y = parseInt(parts[2])
     if (y < 50) {
         y += 2000;
@@ -192,14 +218,17 @@ function registerOp(o) {
 }
 
 function parseAndRegisterOp(o) {
-    var r = {};
-    r['date'] = parseDate(o['Data']);
-    r['op'] = o['Operação']
-    r['n'] = parseInt(o['Número de ações'])
-    r['price'] = parseFloat(o['Preço em dólar'])
-    r['brlusd'] = parseFloat(o['Cotação'])
-
-    registerOp(r);
+    try {
+        var r = {};
+        r['date'] = parseDate(o);
+        r['op'] = o['Operação']
+        r['n'] = parseInt(o['Número de ações'])
+        r['price'] = parseFloat(o['Preço em dólar'])
+        r['brlusd'] = parseFloat(o['Cotação'])
+        registerOp(r);
+    } catch (e) {
+        console.log(e)
+    }
 }
 
 function dataUpdated() {
