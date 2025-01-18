@@ -175,6 +175,20 @@ function parseDate(sheet_row) {
 }
 
 /**
+ * Returns one of the two accepted operation types
+ *
+ * @param {object} spreadsheet_row_object The spreadsheet row that contains the operation
+ * @return {string} operation type, either Venda or Recebimento
+ */
+function parseOperation(sheet_row) {
+    operation = sheet_row[s_operationCol]
+    if (operation === null || (operation !== 'Venda' && operation !== 'Recebimento')) {
+        throw `Linha ${sheet_row.__rowNum__+1} - Operação inesperada: "${operation}". Deveria ser Venda ou Recebimento`
+    }
+    return operation
+}
+
+/**
  * Makes sure the spreadsheet contains at least the expected column names
  */
 function hasUnexpectedColumns() {
@@ -222,7 +236,7 @@ function parseAndRegisterOp(o) {
     try {
         var r = {};
         r['date'] = parseDate(o);
-        r['op'] = o[s_operationCol]
+        r['op'] = parseOperation(o)
         r['n'] = parseInt(o[s_numStocksCol])
         r['price'] = parseFloat(o[s_stockPriceCol])
         r['brlusd'] = parseFloat(o[s_usdQuoteCol])
