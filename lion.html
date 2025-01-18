@@ -134,20 +134,6 @@ function asDollar(value) {
     return "$ " + value.toFixed(2);
 }
 
-function asPercentage(value) {
-    return (100.0*value).toFixed(2) + "%"
-}
-
-function getMonth(date) {
-    return new Date(date.getFullYear(), date.getMonth()+1, 0);
-}
-
-function parseCurrency(value) {
-    return parseFloat(value.replace(/,/, '.').replace(/[.](?=.*[.])/g, ""))
-}
-
-function arrLast(arr) { return arr[arr.length - 1]; }
-
 /**
  * Makes sure to parse a valid int between 1 and range
  *
@@ -186,16 +172,6 @@ function parseDate(sheet_row) {
     }
         
     return new Date(y, m-1, d);
-}
-
-function differentMonth(d1, d2) {
-    return d1.getMonth() != d2.getMonth() || d1.getFullYear() != d2.getFullYear();
-}
-
-function sameDay(d1, d2) {
-    return d1.getMonth() == d2.getMonth() &&
-           d1.getFullYear() == d2.getFullYear() &&
-           d1.getDate() == d2.getDate();
 }
 
 /**
