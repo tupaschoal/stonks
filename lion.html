@@ -189,6 +189,21 @@ function parseOperation(sheet_row) {
 }
 
 /**
+ * Returns a floating number value based on any string with a single decimal separator
+ *
+ * @param {object} spreadsheet_row_object The spreadsheet row that contains the value
+ * @return {float} value
+ */
+ function parseValue(sheet_row, column) {
+    value = sheet_row[column]
+    if ((value.match(/\.|,/g) || []).length > 1) {
+        throw `Linha ${sheet_row.__rowNum__+1} - Valor com multiplos separadores "${value}". Utilize apenas um separador decimal`
+    }
+    // Use . as decimal separator for proper float parsing
+    return parseFloat(sheet_row[column].replaceAll(',', '.'))
+}
+
+/**
  * Makes sure the spreadsheet contains at least the expected column names
  */
 function hasUnexpectedColumns() {
@@ -238,8 +253,8 @@ function parseAndRegisterOp(o) {
         r['date'] = parseDate(o);
         r['op'] = parseOperation(o)
         r['n'] = parseInt(o[s_numStocksCol])
-        r['price'] = parseFloat(o[s_stockPriceCol])
-        r['brlusd'] = parseFloat(o[s_usdQuoteCol])
+        r['price'] = parseValue(o, s_stockPriceCol)
+        r['brlusd'] = parseValue(o, s_usdQuoteCol)
         registerOp(r);
     } catch (e) {
         console.log(e)
