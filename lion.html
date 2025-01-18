@@ -119,6 +119,13 @@ let brNumber4 = Intl.NumberFormat("pt-BR", { maximumFractionDigits: 4, minimumFr
 let brNumber3 = Intl.NumberFormat("pt-BR", { maximumFractionDigits: 3, minimumFractionDigits: 3 });
 let brNumber2 = Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2, minimumFractionDigits: 2 });
 
+// Expected Column titles
+s_dateCol = 'Data'
+s_operationCol = 'Operação'
+s_numStocksCol = 'Número de ações'
+s_stockPriceCol = 'Preço em dólar'
+s_usdQuoteCol = 'Cotação'
+
 function asCurrency(value) {
     return realBRLocale.format(value)
 }
@@ -164,7 +171,7 @@ function parseIntRanged(number_string, range) {
  * @return {Date} date as a JS object
  */
 function parseDate(sheet_row) {
-    date = sheet_row['Data']
+    date = sheet_row[s_dateCol]
     var parts = date.split("/")
     if (parts.length != 3)
     {
@@ -191,6 +198,22 @@ function sameDay(d1, d2) {
            d1.getDate() == d2.getDate();
 }
 
+/**
+ * Makes sure the spreadsheet contains at least the expected column names
+ */
+function hasUnexpectedColumns() {
+    var expectedColumns = [s_dateCol, s_operationCol, s_numStocksCol, s_stockPriceCol, s_usdQuoteCol]
+    var hasError = false
+    var firstRow = s_fileData[0]
+    expectedColumns.forEach((col) => {
+        if (!(col in firstRow)) {
+            hasError = true
+            console.log(`Coluna ${col} não encontrada`)
+        }
+    })
+    return hasError
+}
+
 function readFile(file) {
     var fr = new FileReader();
     fr.onload = function(e) {
@@ -198,7 +221,9 @@ function readFile(file) {
         var Sheet = workbook.SheetNames[0];
         var excelRows = XLSX.utils.sheet_to_row_object_array(workbook.Sheets[Sheet]);
         s_fileData = excelRows;
-        dataUpdated();
+        if (s_fileData.length > 0 && !hasUnexpectedColumns()) {
+            dataUpdated();
+        }
     };
     fr.readAsBinaryString(file);
 }
@@ -221,10 +246,10 @@ function parseAndRegisterOp(o) {
     try {
         var r = {};
         r['date'] = parseDate(o);
-        r['op'] = o['Operação']
-        r['n'] = parseInt(o['Número de ações'])
-        r['price'] = parseFloat(o['Preço em dólar'])
-        r['brlusd'] = parseFloat(o['Cotação'])
+        r['op'] = o[s_operationCol]
+        r['n'] = parseInt(o[s_numStocksCol])
+        r['price'] = parseFloat(o[s_stockPriceCol])
+        r['brlusd'] = parseFloat(o[s_usdQuoteCol])
         registerOp(r);
     } catch (e) {
         console.log(e)
